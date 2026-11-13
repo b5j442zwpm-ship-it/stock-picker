@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>בורר המניות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f7f9;--card:#fff;--ink:#141821;--muted:#5d6676;--line:#e3e6eb;--soft:#eef1f5;
+  --accent:#2357d9;--pos:#12805c;--neg:#c3352b;--warn:#b26a00;
+  --r1:#12805c;--r2:#5a9a2f;--r3:#b98a00;--r4:#d0631c;--r5:#c3352b;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1218;--card:#171b23;--ink:#e8ebf0;--muted:#97a0ae;--line:#2a303b;--soft:#202632;
+  --accent:#7ea2ff;--pos:#3ccf95;--neg:#ff7a6e;--warn:#f0b13c;
+  --r1:#3ccf95;--r2:#9bd45a;--r3:#e8c23a;--r4:#f28a45;--r5:#ff6b5f;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Assistant,system-ui,sans-serif;font-size:16px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.3px}
+h2{font-size:18px;margin:0 0 10px}
+.muted{color:var(--muted)} .small{font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.disc{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--muted);margin-bottom:16px}
+.grid2{display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-weight:700;font-size:14px}
+.st-positive{background:color-mix(in srgb,var(--pos) 15%,transparent);color:var(--pos)}
+.st-neutral{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+.st-negative{background:color-mix(in srgb,var(--neg) 15%,transparent);color:var(--neg)}
+ul.notes{margin:8px 0 0;padding-inline-start:18px} ul.notes li{margin:2px 0}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+@media(max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.kpi{background:var(--soft);border-radius:10px;padding:8px 10px}
+.kpi b{display:block;font-size:17px;font-variant-numeric:tabular-nums} .kpi span{font-size:12px;color:var(--muted)}
+.news a{color:inherit;text-decoration:none} .news a:hover{text-decoration:underline}
+.news li{list-style:none;padding:6px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:flex-start;font-size:14px}
+.news ul{margin:0;padding:0;max-height:300px;overflow:auto}
+.dot{flex:none;width:9px;height:9px;border-radius:50%;margin-top:7px;background:var(--muted)}
+.dot.p{background:var(--pos)} .dot.n{background:var(--neg)}
+.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin:4px 0 14px}
+.seg{display:inline-flex;background:var(--soft);border-radius:10px;padding:3px}
+.seg button{border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+select,input[type=search]{font:inherit;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+input[type=search]{min-width:160px}
+label.ctl{display:inline-flex;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
+.profile-note{font-size:14px;color:var(--muted);margin:-6px 0 12px}
+table{width:100%;border-collapse:collapse}
+th{font-size:13px;color:var(--muted);font-weight:600;text-align:start;padding:8px 8px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle;font-variant-numeric:tabular-nums}
+tr.row{cursor:pointer} tr.row:hover td{background:var(--soft)}
+.nm b{display:block} .nm span{font-size:12px;color:var(--muted)}
+.score{display:flex;align-items:center;gap:8px;min-width:120px}
+.bar{flex:1;height:8px;border-radius:4px;background:var(--soft);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.risk{display:inline-block;min-width:74px;text-align:center;border-radius:8px;padding:2px 8px;font-weight:700;font-size:13px;color:#fff}
+.r1{background:var(--r1)}.r2{background:var(--r2)}.r3{background:var(--r3)}.r4{background:var(--r4)}.r5{background:var(--r5)}
+@media (prefers-color-scheme:dark){.risk{color:#10131a}}
+.pos{color:var(--pos)} .neg{color:var(--neg)}
+.hide-sm{} @media(max-width:700px){.hide-sm{display:none}}
+.tablewrap{overflow-x:auto}
+/* drawer */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:10}
+.ov.on{display:block}
+.drawer{position:fixed;top:0;bottom:0;left:0;width:min(560px,100%);background:var(--card);z-index:11;overflow:auto;padding:20px 18px 40px;transform:translateX(-105%);transition:transform .2s;border-inline-end:1px solid var(--line)}
+.drawer.on{transform:none}
+.x{float:left;border:0;background:var(--soft);color:var(--ink);border-radius:8px;width:34px;height:34px;font-size:18px;cursor:pointer}
+.fac{display:grid;grid-template-columns:110px 1fr 36px;gap:8px;align-items:center;font-size:14px;margin:5px 0}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+@media(max-width:520px){.pc{grid-template-columns:1fr}}
+.pc div{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:14px}
+.pc ul{margin:4px 0 0;padding-inline-start:18px}
+.mt{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:13px}
+.mt div{background:var(--soft);border-radius:8px;padding:6px 8px} .mt b{display:block;font-size:15px}
+details.method{margin-top:18px} details.method summary{cursor:pointer;font-weight:700}
+.warnbox{border:1px solid var(--warn);color:var(--warn);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:14px}
+.empty{padding:30px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>בורר המניות</h1>
+      <div class="muted small" id="updated">טוען נתונים…</div>
+    </div>
+    <div class="small muted">ציון 0–100 = עד כמה המניה טובה מהשאר לפי הפרופיל שבחרת</div>
+  </header>
+
+  <div class="disc">⚠️ זהו כלי עזר לסינון ולהבנת סיכון, לא ייעוץ השקעות. אף מודל לא חוזה מחירים. הנתונים מ-Yahoo Finance ו-Google News, מתעדכנים פעם ביום, ועלולים להכיל טעויות. לפני החלטה כדאי לקרוא את החדשות ואת הדוחות של החברה ולפזר סיכונים.</div>
+  <div id="synthetic"></div>
+
+  <div class="grid2">
+    <section class="card" id="market"></section>
+    <section class="card news" id="mnews"><h2>כותרות מהשוק</h2><ul></ul></section>
+  </div>
+
+  <section class="card">
+    <div class="controls">
+      <div class="seg" id="profile">
+        <button data-p="conservative">שמרני</button>
+        <button data-p="balanced" class="on">מאוזן</button>
+        <button data-p="aggressive">אגרסיבי</button>
+      </div>
+      <div class="seg" id="mkt">
+        <button data-m="all" class="on">הכל</button>
+        <button data-m="US">ארה"ב</button>
+        <button data-m="TA">ת"א</button>
+      </div>
+      <label class="ctl">סקטור <select id="sector"><option value="">הכל</option></select></label>
+      <label class="ctl">סיכון מקסימלי <select id="maxrisk">
+        <option value="1">1 נמוך</option><option value="2">2</option><option value="3">3 בינוני</option><option value="4">4</option><option value="5" selected>5 הכל</option></select></label>
+      <input type="search" id="q" placeholder="חיפוש מניה…">
+    </div>
+    <div class="profile-note" id="pnote"></div>
+    <div class="tablewrap"><table>
+      <thead><tr>
+        <th data-s="rank">#</th><th data-s="name">מניה</th><th data-s="total">ציון</th><th data-s="risk">סיכון</th>
+        <th data-s="r6" class="hide-sm">6 חודשים</th><th data-s="r1y" class="hide-sm">שנה</th><th data-s="up" class="hide-sm">יעד אנליסטים</th><th class="hide-sm">מגמה שנתית</th>
+      </tr></thead>
+      <tbody id="tb"></tbody>
+    </table></div>
+  </section>
+
+  <details class="method card">
+    <summary>איך הציון והסיכון מחושבים?</summary>
+    <p>לכל מניה מחושבים 7 מרכיבים. כל מרכיב הוא <b>אחוזון</b> בתוך הרשימה: 80 פירושו שהמניה טובה מ-80% מהמניות האחרות באותו מרכיב.</p>
+    <ul>
+      <li><b>מומנטום</b>: תשואה ב-12 החודשים האחרונים (בלי החודש האחרון), תשואה בחצי שנה, ממוצע 50 יום מול 200 יום.</li>
+      <li><b>תמחור</b>: מכפיל רווח עתידי ונוכחי, PEG, ושווי לעומת EBITDA. נמוך יותר = זול יותר = ציון גבוה.</li>
+      <li><b>איכות</b>: תשואה על ההון, שולי רווח נקי ותפעולי, ומינוף נמוך.</li>
+      <li><b>צמיחה</b>: צמיחה בהכנסות וברווחים.</li>
+      <li><b>אנליסטים</b>: פער ממחיר היעד הממוצע ודירוג ההמלצה הממוצע.</li>
+      <li><b>חדשות</b>: ניתוח טון של כותרות מהשבועיים האחרונים (כותרות חדשות שוקלות יותר). זה ניתוח מילים פשוט, לא הבנה מלאה, ולכן משקלו נמוך.</li>
+      <li><b>יציבות</b>: תנודתיות נמוכה.</li>
+    </ul>
+    <p>הפרופיל קובע את המשקלות: שמרני מדגיש איכות, תמחור ויציבות. אגרסיבי מדגיש מומנטום וצמיחה. מאוזן באמצע.</p>
+    <p><b>רמת סיכון 1–5</b> היא מוחלטת (לא יחסית): מבוססת על תנודתיות שנתית, הירידה המקסימלית בשנה האחרונה, בטא (כמה המניה מגיבה לתנודות השוק), מינוף וגודל החברה. 1 = מניה יציבה כמו חברת מוצרי צריכה גדולה, 5 = מניה שיכולה לרדת 40% ויותר בתקופה קשה.</p>
+    <p><b>מצב השוק</b> נקבע לפי מגמת S&P 500 מול ממוצע 200 יום, מדד הפחד VIX, שינוי בתשואות אג"ח וטון החדשות. כשמצב השוק זהיר, מומלץ להעדיף מניות בסיכון נמוך ולהשקיע בהדרגה.</p>
+    <p class="muted small">ידוע שמחקרים מצאו שמומנטום, איכות ותמחור זול נותנים יתרון קטן לאורך זמן, אבל היתרון לא מובטח, ויש שנים שבהן כל אחד מהם נכשל.</p>
+  </details>
+</div>
+
+<div class="ov" id="ov"></div>
+<aside class="drawer" id="dr" aria-live="polite"></aside>
+
+<script>
+const PROFILES = {
+  conservative:{label:'שמרני', w:{quality:.30,value:.20,low_vol:.20,analysts:.10,momentum:.10,growth:.05,news:.05}, maxRisk:3,
+    note:'מדגיש חברות רווחיות, זולות ויציבות. מסתיר כברירת מחדל מניות בסיכון 4–5.'},
+  balanced:{label:'מאוזן', w:{momentum:.20,quality:.20,value:.15,growth:.15,analysts:.10,low_vol:.10,news:.10}, maxRisk:5,
+    note:'שילוב שווה בערך של מגמה, איכות, תמחור וצמיחה.'},
+  aggressive:{label:'אגרסיבי', w:{momentum:.30,growth:.25,analysts:.10,news:.10,quality:.10,value:.10,low_vol:.05}, maxRisk:5,
+    note:'מדגיש מגמה חזקה וצמיחה מהירה. ציפייה לתנודות גדולות.'}
+};
+const FAC = {momentum:'מומנטום',value:'תמחור',quality:'איכות',growth:'צמיחה',analysts:'אנליסטים',news:'חדשות',low_vol:'יציבות'};
+const RISK = ['', 'נמוך','נמוך-בינוני','בינוני','גבוה','גבוה מאוד'];
+const SECT = {'Technology':'טכנולוגיה','Financial Services':'פיננסים','Healthcare':'בריאות','Consumer Cyclical':'צריכה מחזורית',
+  'Consumer Defensive':'צריכה בסיסית','Communication Services':'תקשורת','Industrials':'תעשייה','Energy':'אנרגיה',
+  'Utilities':'תשתיות','Real Estate':'נדל"ן','Basic Materials':'חומרי גלם'};
+let D=null, st={p:'balanced',m:'all',sector:'',maxRisk:5,q:'',sort:'total',dir:-1};
+try{const s=JSON.parse(localStorage.getItem('sp_state')||'{}'); Object.assign(st,s)}catch(e){}
+
+const $=s=>document.querySelector(s);
+const L=t=>'\u2066'+t+'\u2069';
+const pct=(x,d=0)=>x==null||!isFinite(x)?'—':L((x>0?'+':'')+(x*100).toFixed(d)+'%');
+const cls=x=>x==null?'':x>=0?'pos':'neg';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=(x,d=1)=>x==null||!isFinite(x)?'—':L(Number(x).toLocaleString('he-IL',{maximumFractionDigits:d}));
+
+function total(s,p){
+  const w=PROFILES[p].w; let n=0,d=0,cov=0;
+  for(const k in w){const v=s.scores[k]; if(v!=null){n+=v*w[k];d+=w[k]}}
+  cov=d; if(d<.6) return {v:null,cov};
+  return {v:Math.round(n/d),cov};
+}
+function spark(arr){
+  if(!arr||arr.length<2)return'';
+  const w=110,h=28,mn=Math.min(...arr),mx=Math.max(...arr),r=mx-mn||1;
+  const pts=arr.map((v,i)=>`${(i*(w/(arr.length-1))).toFixed(1)},${(h-2-(v-mn)/r*(h-4)).toFixed(1)}`).join(' ');
+  const up=arr[arr.length-1]>=arr[0];
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline fill="none" stroke="var(${up?'--pos':'--neg'})" stroke-width="1.6" points="${pts}"/></svg>`;
+}
+function save(){try{localStorage.setItem('sp_state',JSON.stringify({p:st.p,m:st.m,maxRisk:st.maxRisk}))}catch(e){}}
+
+function renderMarket(){
+  const M=D.market, lab={positive:'חיובית',neutral:'ניטרלית / מעורבת',negative:'זהירה'}[M.state];
+  const adv={positive:'סביבה תומכת. עדיין חשוב לפזר ולא להיכנס בבת אחת.',
+    neutral:'אותות מעורבים. כדאי להעדיף מניות איכותיות ולהיכנס בהדרגה.',
+    negative:'סביבה מאתגרת. כדאי להעדיף סיכון נמוך, להחזיק יותר מזומן או להשקיע בהדרגה.'}[M.state];
+  const k=(t,v,sub)=>`<div class="kpi"><span>${t}</span><b>${v}</b>${sub?`<span class="${cls(sub.v)}">${sub.t}</span>`:''}</div>`;
+  $('#market').innerHTML=`<h2>מצב השוק עכשיו: <span class="badge st-${M.state}">${lab}</span></h2>
+  <div class="small">${adv}</div><ul class="notes small">${M.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>
+  <div class="kpis">
+   ${M.spy?k('S&P 500 (SPY) חודש',pct(M.spy.ret_1m,1),{v:M.spy.ret_3m,t:'3 ח׳ '+pct(M.spy.ret_3m,1)}):''}
+   ${M.ta125?k('ת"א 125 חודש',pct(M.ta125.ret_1m,1),{v:M.ta125.ret_3m,t:'3 ח׳ '+pct(M.ta125.ret_3m,1)}):''}
+   ${M.qqq?k('נאסד"ק 100 חודש',pct(M.qqq.ret_1m,1),{v:M.qqq.ret_3m,t:'3 ח׳ '+pct(M.qqq.ret_3m,1)}):''}
+   ${k('מדד הפחד VIX',num(M.vix))}
+   ${k('אג"ח ארה"ב 10 שנים',M.tnx!=null?L(num(M.tnx,2)+'%'):'—')}
+   ${k('דולר/שקל',num(M.usdils,3))}
+   ${k('נפט (חבית)',L('$'+num(M.oil)))}
+   ${k('זהב (אונקיה)',L('$'+num(M.gold,0)))}
+  </div>`;
+  $('#mnews ul').innerHTML=(D.market_news||[]).map(n=>`<li><span class="dot ${n.sentiment>0?'p':n.sentiment<0?'n':''}"></span><a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)} <span class="muted small">· ${esc(n.source)}</span></a></li>`).join('')||'<li class="muted">אין כותרות</li>';
+}
+
+function rows(){
+  const q=st.q.trim().toLowerCase();
+  let r=D.stocks.map(s=>{const t=total(s,st.p);return {...s,total:t.v,cov:t.cov}})
+   .filter(s=>(st.m==='all'||s.market===st.m)&&(!st.sector||s.sector===st.sector)&&s.risk.level<=st.maxRisk)
+   .filter(s=>!q||(s.symbol+' '+s.name+' '+s.name_he).toLowerCase().includes(q));
+  const byTotal=[...r].sort((a,b)=>(b.total??-1)-(a.total??-1)); byTotal.forEach((s,i)=>s.rank=i+1);
+  const key={rank:s=>s.rank,name:s=>s.name_he||s.name,total:s=>s.total??-1,risk:s=>s.risk.score,r6:s=>s.metrics.ret_6m??-9,r1y:s=>s.metrics.ret_1y??-9,up:s=>s.upside??-9}[st.sort];
+  r.sort((a,b)=>{const x=key(a),y=key(b);return (x>y?1:x<y?-1:0)*st.dir});
+  return r;
+}
+function renderTable(){
+  const r=rows();
+  $('#pnote').textContent=PROFILES[st.p].note;
+  $('#tb').innerHTML=r.length?r.map(s=>`<tr class="row" data-s="${esc(s.symbol)}">
+    <td class="muted">${s.rank}</td>
+    <td class="nm"><b>${esc(s.name_he||s.name)}</b><span>${esc(s.symbol)} · ${esc(SECT[s.sector]||s.sector||'')}</span></td>
+    <td><div class="score">${s.total==null?'<span class="muted small">נתונים חסרים</span>':`<b>${s.total}</b><div class="bar"><i style="width:${s.total}%"></i></div>`}</div></td>
+    <td><span class="risk r${s.risk.level}">${s.risk.level} · ${RISK[s.risk.level]}</span></td>
+    <td class="hide-sm ${cls(s.metrics.ret_6m)}">${pct(s.metrics.ret_6m)}</td>
+    <td class="hide-sm ${cls(s.metrics.ret_1y)}">${pct(s.metrics.ret_1y)}</td>
+    <td class="hide-sm ${cls(s.upside)}">${pct(s.upside)}</td>
+    <td class="hide-sm">${spark(s.spark)}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">אין מניות שעונות על הסינון</td></tr>';
+  document.querySelectorAll('tr.row').forEach(tr=>tr.onclick=()=>openStock(tr.dataset.s));
+}
+function openStock(sym){
+  const s=D.stocks.find(x=>x.symbol===sym); if(!s)return;
+  const t=total(s,st.p), f=s.fund, m=s.metrics, cur=s.currency==='ILA'?'אג׳':s.currency==='USD'?'$':s.currency;
+  const fac=Object.keys(FAC).map(k=>{const v=s.scores[k];return `<div class="fac"><span>${FAC[k]}</span><div class="bar"><i style="width:${v??0}%;${v==null?'':''}"></i></div><b>${v==null?'—':Math.round(v)}</b></div>`}).join('');
+  const mt=(a,b)=>`<div><span class="muted">${a}</span><b>${b}</b></div>`;
+  $('#dr').innerHTML=`<button class="x" aria-label="סגירה" onclick="closeDr()">×</button>
+   <h2 style="font-size:22px;margin:0">${esc(s.name_he||s.name)}</h2>
+   <div class="muted small">${esc(s.symbol)} · ${esc(s.name)} · ${esc(SECT[s.sector]||s.sector)} · מחיר ${num(s.price,2)} ${cur}</div>
+   <div style="display:flex;gap:10px;align-items:center;margin:14px 0">
+     <div class="kpi" style="flex:1"><span>ציון (${PROFILES[st.p].label})</span><b style="font-size:26px">${t.v??'—'}</b></div>
+     <div class="kpi" style="flex:1"><span>רמת סיכון</span><b><span class="risk r${s.risk.level}">${s.risk.level} · ${RISK[s.risk.level]}</span></b></div>
+   </div>
+   <h2>מרכיבי הציון</h2>${fac}
+   <div class="pc"><div><b class="pos">חוזקות</b><ul>${s.pros.map(x=>`<li>${esc(x)}</li>`).join('')||'<li class="muted">אין בולטות</li>'}</ul></div>
+   <div><b class="neg">חולשות</b><ul>${s.cons.map(x=>`<li>${esc(x)}</li>`).join('')||'<li class="muted">אין בולטות</li>'}</ul></div></div>
+   <h2>למה רמת הסיכון ${s.risk.level}?</h2><ul class="notes small">${s.risk.why.map(x=>`<li>${esc(x)}</li>`).join('')}
+     <li>ביום רע (1 מתוך 20 ימים) המניה ירדה בשנה האחרונה ${L((m.var95*100).toFixed(1)+'%')} או יותר</li></ul>
+   <h2 style="margin-top:16px">נתונים</h2>
+   <div class="mt">
+     ${mt('חודש',`<span class="${cls(m.ret_1m)}">${pct(m.ret_1m,1)}</span>`)}${mt('3 חודשים',`<span class="${cls(m.ret_3m)}">${pct(m.ret_3m,1)}</span>`)}${mt('שנה',`<span class="${cls(m.ret_1y)}">${pct(m.ret_1y,1)}</span>`)}
+     ${mt('מכפיל רווח',num(f.trailingPE))}${mt('מכפיל עתידי',num(f.forwardPE))}${mt('מכפיל הון',num(f.priceToBook))}
+     ${mt('שולי רווח',pct(f.profitMargins))}${mt('תשואה על ההון',pct(f.returnOnEquity))}${mt('חוב/הון',f.debtToEquity!=null?L(num(f.debtToEquity,0)+'%'):'—')}
+     ${mt('צמיחת הכנסות',pct(f.revenueGrowth))}${mt('צמיחת רווח',pct(f.earningsGrowth))}${mt('דיבידנד',f.dividendYield!=null?L(num(f.dividendYield,2)+'%'):'—')}
+     ${mt('מרחק משיא שנתי',pct(m.from_high))}${mt('בטא',num(m.beta,2))}${mt('אנליסטים',f.numberOfAnalystOpinions?num(f.numberOfAnalystOpinions,0)+' · יעד '+num(f.targetMeanPrice,2):'—')}
+   </div>
+   <h2 style="margin-top:16px">חדשות אחרונות</h2>
+   <div class="news"><ul style="max-height:none">${s.news.map(n=>`<li><span class="dot ${n.sentiment>0?'p':n.sentiment<0?'n':''}"></span><a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)} <span class="muted small">· ${esc(n.source)}${n.date?' · '+new Date(n.date).toLocaleDateString('he-IL'):''}</span></a></li>`).join('')||'<li class="muted">לא נמצאו כותרות בשבועיים האחרונים</li>'}</ul></div>
+   <p class="muted small">נקודה ירוקה/אדומה = כותרת שנראית חיובית/שלילית לפי ניתוח מילים אוטומטי.</p>`;
+  $('#dr').classList.add('on');$('#ov').classList.add('on');
+}
+function closeDr(){$('#dr').classList.remove('on');$('#ov').classList.remove('on')}
+$('#ov').onclick=closeDr; document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDr()});
+
+function wire(){
+  const setSeg=(id,attr,val)=>document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle('on',b.dataset[attr]===val));
+  setSeg('profile','p',st.p); setSeg('mkt','m',st.m); $('#maxrisk').value=st.maxRisk;
+  document.querySelectorAll('#profile button').forEach(b=>b.onclick=()=>{st.p=b.dataset.p;st.maxRisk=PROFILES[st.p].maxRisk;$('#maxrisk').value=st.maxRisk;setSeg('profile','p',st.p);save();renderTable()});
+  document.querySelectorAll('#mkt button').forEach(b=>b.onclick=()=>{st.m=b.dataset.m;setSeg('mkt','m',st.m);save();renderTable()});
+  $('#maxrisk').onchange=e=>{st.maxRisk=+e.target.value;save();renderTable()};
+  $('#sector').onchange=e=>{st.sector=e.target.value;renderTable()};
+  $('#q').oninput=e=>{st.q=e.target.value;renderTable()};
+  document.querySelectorAll('th[data-s]').forEach(th=>th.onclick=()=>{const k=th.dataset.s;if(st.sort===k)st.dir*=-1;else{st.sort=k;st.dir=(k==='rank'||k==='name'||k==='risk')?1:-1}renderTable()});
+  const secs=[...new Set(D.stocks.map(s=>s.sector).filter(Boolean))].sort();
+  $('#sector').innerHTML='<option value="">הכל</option>'+secs.map(s=>`<option value="${esc(s)}">${esc(SECT[s]||s)}</option>`).join('');
+}
+
+fetch('data.json?'+Date.now()).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{
+  D=d;
+  const dt=new Date(d.generated_at);
+  $('#updated').textContent=`עודכן ${dt.toLocaleString('he-IL',{dateStyle:'medium',timeStyle:'short'})} · ${d.count} מניות`;
+  if(d.synthetic)$('#synthetic').innerHTML='<div class="warnbox">נתוני הדגמה אקראיים בלבד, לא נתוני שוק אמיתיים.</div>';
+  if((Date.now()-dt)/864e5>4)$('#synthetic').innerHTML+='<div class="warnbox">הנתונים לא עודכנו כמה ימים. ייתכן שהעדכון האוטומטי נכשל.</div>';
+  renderMarket(); wire(); renderTable();
+}).catch(e=>{$('#updated').textContent='הנתונים עוד לא נוצרו. העדכון האוטומטי הראשון ירוץ בקרוב.';});
+</script>
+</body>
+</html>
