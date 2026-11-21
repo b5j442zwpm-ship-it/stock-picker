@@ -1,0 +1,56 @@
+name: Watchlist (רשימת מעקב)
+
+# Add or remove a stock from watchlist.txt. Alerts arrive in the morning summary.
+on:
+  workflow_dispatch:
+    inputs:
+      symbol:
+        description: "סימול (למשל NVDA, או TEVA.TA)"
+        required: true
+      action:
+        description: "להוסיף או להסיר"
+        type: choice
+        options: [add, remove]
+        default: add
+      target:
+        description: "מחיר יעד לקנייה (לא חובה). התראה כשהמחיר יורד אליו"
+        required: false
+      note:
+        description: "הערה (לא חובה)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Edit watchlist
+        env:
+          SYMBOL: ${{ inputs.symbol }}
+          ACTION: ${{ inputs.action }}
+          TARGET: ${{ inputs.target }}
+          NOTE: ${{ inputs.note }}
+        run: python scripts/edit_watchlist.py
+      - run: python scripts/build_data.py
+      - name: Commit
+        run: |
+          git config user.name "stock-picker-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add watchlist.txt docs/data.json docs/history.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Watchlist: ${{ inputs.action }} ${{ inputs.symbol }}"
+          git pull --rebase
+          git push

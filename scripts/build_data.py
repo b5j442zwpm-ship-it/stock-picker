@@ -23,13 +23,16 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from verdict import consult, earnings_context  # noqa: E402
+from verdict import consult, earnings_context, exit_plan  # noqa: E402
+import history  # noqa: E402
 
 import numpy as np
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "data.json"
+HIST = ROOT / "docs" / "history.json"
+WATCH_FILE = ROOT / "watchlist.txt"
 TICKERS_FILE = ROOT / "tickers.txt"
 
 BENCH = {"US": "SPY", "TA": "^TA125.TA"}
@@ -125,6 +128,12 @@ def load_universe() -> list[dict]:
         sym = parts[0]
         out.append({"symbol": sym, "name_he": parts[1] if len(parts) > 1 else "",
                     "market": "TA" if sym.endswith(".TA") else "US"})
+    # stocks on the watchlist are always analysed, even if they are not in tickers.txt
+    have = {u["symbol"] for u in out}
+    for w in load_watchlist():
+        if w["symbol"] not in have:
+            have.add(w["symbol"])
+            out.append({"symbol": w["symbol"], "name_he": "", "market": "TA" if w["symbol"].endswith(".TA") else "US"})
     return out
 
 
@@ -163,14 +172,15 @@ def price_metrics(close: pd.Series, bench: pd.Series | None) -> dict:
     dn = (-d.clip(upper=0)).ewm(alpha=1 / 14, adjust=False).mean()
     rsi = float(100 - 100 / (1 + up.iloc[-1] / dn.iloc[-1])) if dn.iloc[-1] > 0 else 100.0
     ma20 = float(close.iloc[-20:].mean())
+    dvol20 = float(r.iloc[-20:].std())
     spark = [round(float(v), 2) for v in close.iloc[-252::5]]
     return {"price": round(last, 2), "ret_1m": m1, "ret_3m": ret(63), "ret_6m": ret(126),
             "ret_1y": m12, "mom_12_1": mom_12_1, "vol": vol, "downside_vol": downside,
             "max_dd": dd, "beta": beta, "var95": var95,
             "above_ma200": (last > ma200) if ma200 else None,
             "ma50_vs_200": (ma50 / ma200 - 1) if ma200 else None,
-            "from_high": last / hi52 - 1, "rsi14": rsi, "ret_5d": ret(5),
-            "ma20": round(ma20, 2), "ma50": round(ma50, 2), "ma200": round(ma200, 2) if ma200 else None,
+            "from_high": last / hi52 - 1, "rsi14": rsi, "ret_5d": ret(5), "ret_1d": ret(1),
+            "ma20": round(ma20, 2), "dvol20": dvol20, "ma50": round(ma50, 2), "ma200": round(ma200, 2) if ma200 else None,
             "low_3m": round(float(close.iloc[-63:].min()), 2), "spark": spark}
 
 
@@ -206,7 +216,7 @@ def fetch_all(universe, yf):
     syms = [u["symbol"] for u in universe]
     extra = sorted(set(BENCH.values()) | set(MACRO.values()))
     print(f"Downloading prices for {len(syms) + len(extra)} symbols...")
-    hist = yf.download(syms + extra, period="2y", interval="1d", auto_adjust=True,
+    hist = yf.download(syms + extra, period="3y", interval="1d", auto_adjust=True,
                        progress=False, group_by="column", threads=True)
     closes = hist["Close"]
     infos = {}
@@ -392,6 +402,48 @@ def market_regime(closes: pd.DataFrame, market_news: list[dict]) -> dict:
             "oil": last("CL=F"), "gold": last("GC=F"), "usdils": last("ILS=X")}
 
 
+def load_watchlist() -> list[dict]:
+    """watchlist.txt lines: SYMBOL | target price (optional) | note (optional)"""
+    out = []
+    if not WATCH_FILE.exists():
+        return out
+    for line in WATCH_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = [p.strip() for p in line.split("|")]
+        out.append({"symbol": parts[0].upper(), "target": clean(parts[1]) if len(parts) > 1 and parts[1] else None,
+                    "note": parts[2] if len(parts) > 2 else ""})
+    return out
+
+
+def watch_alerts(watch: list[dict], stocks: list[dict], changes: list[dict]) -> list[dict]:
+    by = {s["symbol"]: s for s in stocks}
+    ch = {c["symbol"]: c for c in changes}
+    out = []
+    for w in watch:
+        s = by.get(w["symbol"])
+        item = {**w, "found": bool(s), "alerts": []}
+        if s:
+            v = s["consult"]["verdict"]
+            item.update(name=s.get("name_he") or s["name"], price=s["price"], verdict=v)
+            c = ch.get(w["symbol"])
+            if c and v == "buy":
+                item["alerts"].append(f"עברה ל\"לקנות עכשיו\" (הייתה {VERDICT_HE[c['from']]})")
+            elif c:
+                item["alerts"].append(f"ההמלצה השתנתה: {VERDICT_HE[c['from']]} \u2190 {VERDICT_HE[v]}")
+            if w["target"]:
+                prev = (s["metrics"].get("ret_1d") is not None) and s["price"] / (1 + s["metrics"]["ret_1d"])
+                if s["price"] <= w["target"] and (not prev or prev > w["target"]):
+                    item["alerts"].append(f"ירדה למחיר היעד שלך ({w['target']:g})")
+                item["at_target"] = s["price"] <= w["target"]
+        out.append(item)
+    return out
+
+
+VERDICT_HE = {"buy": "לקנות עכשיו", "wait": "לחכות", "avoid": "לא לקנות"}
+
+
 def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: list[dict]) -> dict:
     rows = []
     for u in universe:
@@ -468,7 +520,17 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
             "earnings": {"next": ectx.get("next_earnings"), "days": ectx.get("days_to_earnings"),
                          "history": [e for e in (f.get("_earnings") or []) if e["surprise"] is not None][:4]},
         })
+    # ---- track record, daily changes, watchlist alerts ----------------------------------
+    today = datetime.now(timezone.utc).date().isoformat()
+    bench_of = {u["symbol"]: BENCH[u["market"]] for u in universe}
+    hist = history.load(HIST)
+    changes = history.update(hist, stocks, today)
+    HIST.write_text(json.dumps(hist, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    track = {"live": history.evaluate_live(hist, closes, bench_of),
+             "sim": history.simulate(closes, [s["symbol"] for s in stocks], bench_of, price_metrics, exit_plan)}
+    watch = watch_alerts(load_watchlist(), stocks, changes)
     return {"generated_at": datetime.now(timezone.utc).isoformat(timespec="minutes"),
+            "changes": changes, "track": track, "watchlist": watch,
             "count": len(stocks), "market": regime, "market_news": market_news[:12], "stocks": stocks}
 
 

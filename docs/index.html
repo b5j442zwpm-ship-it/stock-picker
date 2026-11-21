@@ -106,6 +106,29 @@ details.method{margin-top:18px} details.method summary{cursor:pointer;font-weigh
 .grp{font-size:13px;font-weight:700;color:var(--muted);margin:14px 0 2px}
 .tally{display:flex;gap:12px;font-size:13px;margin-top:6px}
 .hero .ck b{color:var(--ink)}
+.exitbox{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+.exitbox div{background:var(--card);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.exitbox b{display:block;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+.btn2{font:inherit;font-weight:600;font-size:14px;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:10px;padding:6px 12px;cursor:pointer}
+.btn2.on{border-color:var(--accent);color:var(--accent)}
+.wl li{list-style:none;padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+.wl ul{margin:0;padding:0;max-height:340px;overflow:auto}
+.wl .nm{flex:1;min-width:120px;cursor:pointer}
+.wl input{width:84px;font:inherit;font-size:13px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:3px 6px}
+.alert{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);border-radius:8px;padding:1px 8px;font-size:12px;font-weight:700}
+.tbar{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);border-radius:999px;padding:8px 10px 8px 16px;display:none;gap:10px;align-items:center;z-index:9;box-shadow:0 4px 18px rgba(0,0,0,.25);font-size:14px;max-width:calc(100% - 32px)}
+.tbar.on{display:flex}
+.tbar button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:5px 12px;cursor:pointer}
+.cmp{width:100%;border-collapse:collapse;font-size:13px}
+.cmp th,.cmp td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:start;vertical-align:top;cursor:default}
+.cmp th{color:var(--muted);font-weight:600;white-space:normal}
+.cmp thead th{color:var(--ink);font-size:14px}
+.drawer.wide{width:min(900px,100%)}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+@media(max-width:620px){.stat{grid-template-columns:repeat(2,1fr)}}
+.stat div{background:var(--soft);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.stat b{display:block;font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -132,6 +155,11 @@ details.method{margin-top:18px} details.method summary{cursor:pointer;font-weigh
     <div class="chips" id="cchips"></div>
     <div id="cnf"></div>
   </section>
+
+  <div class="grid2">
+    <section class="card wl" id="watch"></section>
+    <section class="card wl" id="changes"></section>
+  </div>
 
   <div class="grid2">
     <section class="card" id="market"></section>
@@ -166,6 +194,8 @@ details.method{margin-top:18px} details.method summary{cursor:pointer;font-weigh
     </table></div>
   </section>
 
+  <section class="card" id="track" style="margin:14px 0"></section>
+
   <details class="method card">
     <summary>איך הציון והסיכון מחושבים?</summary>
     <p>לכל מניה מחושבים 7 מרכיבים. כל מרכיב הוא <b>אחוזון</b> בתוך הרשימה: 80 פירושו שהמניה טובה מ-80% מהמניות האחרות באותו מרכיב.</p>
@@ -185,6 +215,7 @@ details.method{margin-top:18px} details.method summary{cursor:pointer;font-weigh
   </details>
 </div>
 
+<div class="tbar" id="tbar"></div>
 <div class="ov" id="ov"></div>
 <aside class="drawer" id="dr" aria-live="polite"></aside>
 
@@ -226,6 +257,96 @@ function spark(arr){
   const pts=arr.map((v,i)=>`${(i*(w/(arr.length-1))).toFixed(1)},${(h-2-(v-mn)/r*(h-4)).toFixed(1)}`).join(' ');
   const up=arr[arr.length-1]>=arr[0];
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline fill="none" stroke="var(${up?'--pos':'--neg'})" stroke-width="1.6" points="${pts}"/></svg>`;
+}
+let W={},CMP=[];
+try{W=JSON.parse(localStorage.getItem('sp_watch')||'{}')}catch(e){}
+function saveW(){try{localStorage.setItem('sp_watch',JSON.stringify(W))}catch(e){};renderWatch()}
+function toggleWatch(sym){if(W[sym])delete W[sym];else{const s=D.stocks.find(x=>x.symbol===sym);W[sym]={target:null,seen:s&&s.consult&&s.consult.verdict,added:Date.now()}};saveW()}
+function toggleCmp(sym){const i=CMP.indexOf(sym);if(i>=0)CMP.splice(i,1);else{if(CMP.length>=3)CMP.shift();CMP.push(sym)};renderTbar()}
+function renderTbar(){
+  const b=$('#tbar');b.classList.toggle('on',CMP.length>0);
+  b.innerHTML=`<span>השוואה: ${CMP.map(x=>esc(nameOf(x))).join(' · ')}</span>${CMP.length>=2?'<button style="background:var(--accent);color:#fff" onclick="openCompare()">השווה</button>':'<span style="opacity:.7">בחר עוד מניה</span>'}<button style="background:transparent;color:inherit" onclick="CMP=[];renderTbar()" aria-label="ניקוי">✕</button>`;
+}
+function nameOf(sym){const s=D.stocks.find(x=>x.symbol===sym);return s?(s.name_he||s.name):sym}
+function exitHTML(s){
+  const e=s.consult&&s.consult.exit; if(!e||!e.target) return '';
+  const head=s.consult.verdict==='buy'?'תוכנית יציאה':'אם קונים בהמשך, תוכנית יציאה לפי המחיר היום';
+  return `<div style="margin-top:12px"><b>${head}</b>
+   <div class="exitbox"><div>מחיר יעד<b class="pos">${num(e.target,2)}</b>${pct(e.target_pct,1)}</div>
+   <div>סטופ-לוס<b class="neg">${num(e.stop,2)}</b>${pct(e.stop_pct,1)}</div>
+   <div>סיכוי מול סיכון<b>${L('1:'+e.rr)}</b>על כל 1 בסיכון</div></div>
+   <div class="small muted" style="margin-top:6px">יעד: ${esc(e.basis_target)}. סטופ: ${esc(e.basis_stop)}. סטופ-לוס = המחיר שבו מוכרים כדי להגביל הפסד אם הניתוח טעה.</div></div>`;
+}
+function watchAlerts(sym){
+  const s=D.stocks.find(x=>x.symbol===sym), w=W[sym], out=[]; if(!s) return out;
+  const v=s.consult&&s.consult.verdict;
+  if(v==='buy'&&w.seen&&w.seen!=='buy') out.push('עברה ל"לקנות עכשיו"');
+  else if(w.seen&&v&&w.seen!==v) out.push('ההמלצה השתנתה');
+  if(w.target&&s.price<=w.target) out.push('הגיעה למחיר היעד שלך');
+  const srv=(D.watchlist||[]).find(x=>x.symbol===sym); if(srv) (srv.alerts||[]).forEach(a=>{if(!out.includes(a))out.push(a)});
+  return out;
+}
+function renderWatch(){
+  const syms=Object.keys(W).filter(x=>D.stocks.some(s=>s.symbol===x));
+  const srv=(D.watchlist||[]).filter(w=>w.found&&!W[w.symbol]);
+  const m=location.hostname.match(/^([^.]+)\.github\.io$/), repo=location.pathname.split('/')[1]||'stock-picker';
+  const wf=m?`https://github.com/${m[1]}/${repo}/actions/workflows/watch.yml`:null;
+  const row=(sym,target,srvOnly)=>{const s=D.stocks.find(x=>x.symbol===sym),v=s.consult.verdict,al=srvOnly?(D.watchlist.find(x=>x.symbol===sym).alerts||[]):watchAlerts(sym);
+    const onSrv=(D.watchlist||[]).some(x=>x.symbol===sym);
+    return `<li><span class="nm" onclick="openStock('${esc(sym)}')"><b>${esc(s.name_he||s.name)}</b> <span class="muted small">${esc(sym)} · ${num(s.price,2)}${onSrv?' · 🔔':''}</span></span>
+     <span class="vd v-${v}">${VERD[v]}</span>${al.map(a=>`<span class="alert">🔔 ${esc(a)}</span>`).join('')}
+     ${srvOnly?'':`<input type="number" step="any" placeholder="מחיר יעד" value="${target??''}" onchange="W['${esc(sym)}'].target=this.value?+this.value:null;saveW()" aria-label="מחיר יעד לקנייה"><button class="btn2" style="padding:2px 8px" onclick="toggleWatch('${esc(sym)}')" aria-label="הסרה">✕</button>`}</li>`};
+  $('#watch').innerHTML=`<h2>★ רשימת המעקב שלי</h2>
+   ${syms.length||srv.length?`<ul>${syms.map(x=>row(x,W[x].target,false)).join('')}${srv.map(w=>row(w.symbol,w.target,true)).join('')}</ul>`:'<p class="muted small">עוד אין מניות במעקב. פתח מניה ולחץ "☆ הוסף למעקב". אפשר לקבוע מחיר יעד, ותופיע כאן התראה כשהמניה עוברת ל"לקנות עכשיו" או יורדת למחיר שקבעת.</p>'}
+   <p class="muted small" style="margin:8px 0 0">הרשימה כאן שמורה רק בדפדפן הזה. ${wf?`<a href="${wf}" target="_blank" rel="noopener">כדי לקבל התראה לטלפון ולמייל בסיכום הבוקר</a>, הוסף את המניה גם שם (Run workflow).`:'להתראות לטלפון ולמייל: לשונית Actions במאגר, "Watchlist".'} מניות עם 🔔 כבר מקבלות התראות.</p>`;
+}
+function renderChanges(){
+  const ch=D.changes||[], ord={buy:0,wait:1,avoid:2};
+  $('#changes').innerHTML=`<h2>מה השתנה מאתמול</h2>`+(ch.length?`<ul>${[...ch].sort((a,b)=>ord[a.to]-ord[b.to]).map(c=>`<li><span class="nm" onclick="openStock('${esc(c.symbol)}')"><b>${esc(c.name)}</b> <span class="muted small">${esc(c.symbol)}</span></span><span class="vd v-${c.from}" style="opacity:.6">${VERD[c.from]}</span><span class="muted">←</span><span class="vd v-${c.to}">${VERD[c.to]}</span></li>`).join('')}</ul>`
+    :`<p class="muted small">${(D.track&&D.track.live&&D.track.live.since)?'אין שינויים בהמלצות מאז הריצה הקודמת.':'השינויים יופיעו כאן החל מהריצה השנייה של הכלי.'}</p>`)+
+    `<p class="muted small" style="margin:8px 0 0">כל בוקר נשלח סיכום של השינויים וההתראות בהודעה מ-GitHub (למייל ולאפליקציית GitHub).</p>`;
+}
+function renderTrack(){
+  const T=D.track; if(!T){$('#track').style.display='none';return}
+  const f=(x,d=1)=>x==null?'—':L((x>0?'+':'')+(x*100).toFixed(d)+'%'), r=x=>x==null?'—':L(Math.round(x*100)+'%');
+  const dt=x=>x?new Date(x).toLocaleDateString('he-IL'):'—';
+  const lv=T.live||{}, b=lv.buy||{}, sm=T.sim||{}, sb=sm.buy||{}, sa=sm.all||{}, sv=sm.avoid||{};
+  const live=b.n_r1m?`<div class="stat"><div>המלצות קנייה שנבדקו<b>${b.n_r1m}</b>מתוך ${b.n} מאז ${dt(lv.since)}</div>
+     <div>עלו אחרי חודש<b>${r(b.win1m)}</b>ממוצע ${f(b.r1m)}</div><div>אחרי 3 חודשים<b>${f(b.r3m)}</b>${b.n_r3m} המלצות, ${r(b.win3m)} עלו</div>
+     <div>הגיעו ליעד לפני הסטופ<b>${r(b.target_first)}</b>מתוך ${b.n_hits} שהגיעו לאחד מהם</div></div>`
+    :`<p class="small">${b.n?`נרשמו ${b.n} המלצות קנייה מאז ${dt(lv.since)}. התוצאות יופיעו כאן אחרי שיעבור עליהן חודש.`:'הכלי מתחיל עכשיו לרשום כל המלצה. כעבור חודש יופיעו כאן התוצאות האמיתיות.'}</p>`;
+  $('#track').innerHTML=`<h2>האם ההמלצות עובדות?</h2>
+   <h3 style="font-size:15px;margin:10px 0 0">1. המלצות אמיתיות של הכלי</h3>${live}
+   <h3 style="font-size:15px;margin:14px 0 0">2. בדיקה לאחור (${dt(sm.from)} עד ${dt(sm.to)})</h3>
+   <p class="small muted" style="margin:4px 0">הרצנו את חלק המגמה והתזמון של הבדיקה על מחירי העבר של כל המניות, כל שבועיים. מה קרה אחרי 3 חודשים:</p>
+   <div class="tablewrap"><table class="cmp"><thead><tr><th></th><th>מספר מקרים</th><th>תשואה ממוצעת</th><th>עלו</th><th>מול המדד</th></tr></thead><tbody>
+    <tr><th>מגמה ותזמון חיוביים ("לקנות")</th><td>${sb.n_r3m??'—'}</td><td class="${cls(sb.r3m)}">${f(sb.r3m)}</td><td>${r(sb.win3m)}</td><td class="${cls(sb.x3m)}">${f(sb.x3m)}</td></tr>
+    <tr><th>כל המניות בכל הזמנים</th><td>${sa.n_r3m??'—'}</td><td class="${cls(sa.r3m)}">${f(sa.r3m)}</td><td>${r(sa.win3m)}</td><td class="${cls(sa.x3m)}">${f(sa.x3m)}</td></tr>
+    <tr><th>מגמה יורדת ("לא לקנות")</th><td>${sv.n_r3m??'—'}</td><td class="${cls(sv.r3m)}">${f(sv.r3m)}</td><td>${r(sv.win3m)}</td><td class="${cls(sv.x3m)}">${f(sv.x3m)}</td></tr>
+   </tbody></table></div>
+   <p class="small muted">בקניות לפי האות, היעד הושג לפני הסטופ ב-${r(sb.target_first)} מהמקרים. הבדיקה לאחור לא כוללת את הנתונים הפיננסיים (אין היסטוריה מהימנה שלהם), ובמבחן כזה יש הטיה: המניות ברשימה הן חברות שהצליחו עד היום. ביצועי עבר לא מבטיחים כלום.</p>`;
+}
+function openCompare(){
+  const S=CMP.map(x=>D.stocks.find(s=>s.symbol===x)).filter(Boolean); if(S.length<2) return;
+  const ic={good:'✓',ok:'!',bad:'✕',na:'?'}, cur=s=>s.currency==='ILA'?'אג׳':s.currency==='USD'?'$':s.currency;
+  const row=(t,fn)=>`<tr><th>${t}</th>${S.map(s=>`<td>${fn(s)}</td>`).join('')}</tr>`;
+  const keys=S[0].consult.checks.map(c=>c.key);
+  const best=[...S].sort((a,b)=>(VORD[b.consult.verdict]*1000+b.consult.score)-(VORD[a.consult.verdict]*1000+a.consult.score))[0];
+  $('#dr').innerHTML=`<button class="x" aria-label="סגירה" onclick="closeDr()">×</button><h2 style="font-size:22px;margin:0 0 4px">השוואת מניות</h2>
+   <p class="small">לפי הבדיקה, <b>${esc(best.name_he||best.name)}</b> במצב הטוב ביותר מבין ${S.length} המניות (${VERD[best.consult.verdict]}, ציון ${L(best.consult.score)}).</p>
+   <div class="tablewrap"><table class="cmp"><thead><tr><th></th>${S.map(s=>`<th><a href="#" onclick="openStock('${esc(s.symbol)}');return false" style="color:inherit">${esc(s.name_he||s.name)}</a><div class="muted small">${esc(s.symbol)}</div></th>`).join('')}</tr></thead><tbody>
+    ${row('המלצה',s=>`<span class="vd v-${s.consult.verdict}">${VERD[s.consult.verdict]}</span>`)}
+    ${row('ציון כולל',s=>L(s.consult.score))}
+    ${row('מחיר',s=>num(s.price,2)+' '+cur(s))}
+    ${row('יעד / סטופ',s=>s.consult.exit&&s.consult.exit.target?`<span class="pos">${num(s.consult.exit.target,2)}</span> / <span class="neg">${num(s.consult.exit.stop,2)}</span>`:'—')}
+    ${row('סיכון',s=>`<span class="risk r${s.risk.level}">${s.risk.level}</span>`)}
+    ${row('חודש / שנה',s=>`<span class="${cls(s.metrics.ret_1m)}">${pct(s.metrics.ret_1m)}</span> / <span class="${cls(s.metrics.ret_1y)}">${pct(s.metrics.ret_1y)}</span>`)}
+    ${row('מכפיל עתידי',s=>num(s.fund.forwardPE))}
+    ${row('צמיחת הכנסות',s=>pct(s.fund.revenueGrowth))}
+    ${row('שולי רווח',s=>pct(s.fund.profitMargins))}
+    ${keys.map(k=>row(esc(S[0].consult.checks.find(c=>c.key===k).group==='x'?'':({trend:'מגמה',timing:'נקודת כניסה',earn_date:'דוח קרוב',earn_last:'דוח אחרון',value:'תמחור',quality:'רווחיות',balance:'מאזן',growth:'צמיחה',analysts:'אנליסטים',news:'חדשות',risk:'סיכון',market:'שוק'}[k]||k)),s=>{const c=s.consult.checks.find(c=>c.key===k);return c?`<span class="ic ${c.status}" style="display:inline-grid;width:18px;height:18px;border-radius:50%;place-items:center;color:#fff;font-size:11px;margin-inline-end:4px">${ic[c.status]}</span>${esc(c.title)}`:'—'})).join('')}
+   </tbody></table></div><p class="muted small">לא ייעוץ השקעות.</p>`;
+  $('#dr').classList.add('on','wide');$('#ov').classList.add('on');$('#dr').scrollTop=0;$('#dr').dataset.sym='';
 }
 function save(){try{localStorage.setItem('sp_state',JSON.stringify({p:st.p,m:st.m,maxRisk:st.maxRisk}))}catch(e){}}
 
@@ -283,6 +404,8 @@ function openStock(sym){
   const mt=(a,b)=>`<div><span class="muted">${a}</span><b>${b}</b></div>`;
   $('#dr').innerHTML=`<button class="x" aria-label="סגירה" onclick="closeDr()">×</button>
    <h2 style="font-size:22px;margin:0">${esc(s.name_he||s.name)}</h2>
+   <div class="acts"><button class="btn2 ${W[sym]?'on':''}" onclick="toggleWatch('${esc(sym)}');openStock('${esc(sym)}')">${W[sym]?'★ ברשימת המעקב':'☆ הוסף למעקב'}</button>
+     <button class="btn2 ${CMP.includes(sym)?'on':''}" onclick="toggleCmp('${esc(sym)}');openStock('${esc(sym)}')">${CMP.includes(sym)?'✓ בהשוואה':'⇄ הוסף להשוואה'}</button></div>
    <div class="muted small">${esc(s.symbol)} · ${esc(s.name)} · ${esc(SECT[s.sector]||s.sector)} · מחיר ${num(s.price,2)} ${cur}</div>
    <div style="display:flex;gap:10px;align-items:center;margin:14px 0">
      <div class="kpi" style="flex:1"><span>ציון יחסי (${PROFILES[st.p].label})</span><b style="font-size:26px">${t.v??'—'}</b></div>
@@ -305,7 +428,10 @@ function openStock(sym){
    <h2 style="margin-top:16px">חדשות אחרונות</h2>
    <div class="news"><ul style="max-height:none">${s.news.map(n=>`<li><span class="dot ${n.sentiment>0?'p':n.sentiment<0?'n':''}"></span><a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)} <span class="muted small">· ${esc(n.source)}${n.date?' · '+new Date(n.date).toLocaleDateString('he-IL'):''}</span></a></li>`).join('')||'<li class="muted">לא נמצאו כותרות בשבועיים האחרונים</li>'}</ul></div>
    <p class="muted small">נקודה ירוקה/אדומה = כותרת שנראית חיובית/שלילית לפי ניתוח מילים אוטומטי.</p>`;
-  $('#dr').classList.add('on');$('#ov').classList.add('on');$('#dr').scrollTop=0;
+  $('#dr').classList.remove('wide');
+  if(W[sym]){W[sym].seen=s.consult&&s.consult.verdict;saveW()}
+  const keep=$('#dr').dataset.sym===sym?$('#dr').scrollTop:0; $('#dr').dataset.sym=sym;
+  $('#dr').classList.add('on');$('#ov').classList.add('on');$('#dr').scrollTop=keep;
   try{history.replaceState(null,'','#'+encodeURIComponent(sym))}catch(e){}
 }
 function closeDr(){$('#dr').classList.remove('on');$('#ov').classList.remove('on');try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
@@ -325,6 +451,7 @@ function consultHTML(s){
      <p>${esc(c.summary)}</p>
      <div style="margin-top:8px">${c.reasons.map(r=>`<div class="ck" style="border:0;padding:4px 0"><span class="ic ${r.status}">${icon[r.status]}</span><div><b>${esc(r.title)}</b><span>${esc(r.text)}</span></div></div>`).join('')}</div>${fit?`<ul>${fit}</ul>`:''}
      ${c.cautions&&c.cautions.length?`<div class="small" style="margin-top:8px"><b>${c.verdict==='avoid'?'מה כן טוב':'נקודות לתשומת לב'}:</b> ${c.cautions.map(esc).join(' · ')}</div>`:''}
+     ${exitHTML(s)}
      ${waits}
      <div class="tally"><span class="pos">✓ ${c.counts.good} חיוביות</span><span style="color:var(--warn)">! ${c.counts.ok} ניטרליות</span><span class="neg">✕ ${c.counts.bad} שליליות</span></div>
      <div class="meta">ציון כולל ${L((c.score>0?'+':'')+c.score)} (מ-100- עד 100+) · ביטחון ${c.confidence} · נכון לנתוני ${new Date(D.generated_at).toLocaleDateString('he-IL')} · לא ייעוץ השקעות</div>
@@ -379,7 +506,7 @@ fetch('data.json?'+Date.now()).then(r=>{if(!r.ok)throw new Error(r.status);retur
   $('#updated').textContent=`עודכן ${dt.toLocaleString('he-IL',{dateStyle:'medium',timeStyle:'short'})} · ${d.count} מניות`;
   if(d.synthetic)$('#synthetic').innerHTML='<div class="warnbox">נתוני הדגמה אקראיים בלבד, לא נתוני שוק אמיתיים.</div>';
   if((Date.now()-dt)/864e5>4)$('#synthetic').innerHTML+='<div class="warnbox">הנתונים לא עודכנו כמה ימים. ייתכן שהעדכון האוטומטי נכשל.</div>';
-  renderMarket(); wire(); renderTable();
+  renderMarket(); wire(); renderTable(); renderWatch(); renderChanges(); renderTrack(); renderTbar();
   const h=decodeURIComponent(location.hash.slice(1)); if(h) openStock(h);
 }).catch(e=>{$('#updated').textContent='הנתונים עוד לא נוצרו. העדכון האוטומטי הראשון ירוץ בקרוב.';});
 </script>

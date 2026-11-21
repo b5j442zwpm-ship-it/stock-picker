@@ -294,6 +294,27 @@ def _score(checks, group=None):
     return (num / den if den else None), den
 
 
+def exit_plan(m: dict, f: dict, upside) -> dict:
+    """Stop-loss from recent volatility, target from analysts or a 2:1 reward/risk."""
+    p, dv = m.get("price"), m.get("dvol20")
+    if not p:
+        return {}
+    dv = dv if dv else (m.get("vol") or 0.3) / 15.9
+    atr = p * dv * 1.25  # close-to-close proxy for the average true range
+    stop = min(max(p - 2.5 * atr, p * 0.85), p * 0.95)
+    basis_stop = "2.5 פעמים התנודה היומית הממוצעת מתחת למחיר"
+    ma50 = m.get("ma50")
+    if ma50 and stop < ma50 * 0.98 < p * 0.96:
+        stop, basis_stop = ma50 * 0.98, "קצת מתחת לממוצע 50 יום (שבירה שלו מחלישה את המגמה)"
+    risk = p - stop
+    target, basis_t = p + 2 * risk, "פי 2 מהסיכון (יחס סיכוי/סיכון 1:2)"
+    if upside is not None and 1.5 * risk / p <= upside <= 0.6:
+        target, basis_t = p * (1 + upside), "מחיר היעד הממוצע של האנליסטים"
+    return {"target": round(target, 2), "stop": round(stop, 2), "target_pct": round(target / p - 1, 4),
+            "stop_pct": round(stop / p - 1, 4), "rr": round((target - p) / risk, 1),
+            "basis_target": basis_t, "basis_stop": basis_stop}
+
+
 def _r(c):
     return {"status": c["status"], "title": c["title"], "text": c["text"]}
 
@@ -366,7 +387,8 @@ def consult(m: dict, f: dict, ctx: dict) -> dict:
         reasons = [_r(c) for c in top(reds, 4)]
         cautions = [c["title"] for c in greens]
 
-    return {"verdict": verdict, "summary": summary, "reasons": reasons, "cautions": cautions,
+    ex = exit_plan(m, f, ctx.get("upside")) if verdict != "avoid" else {}
+    return {"verdict": verdict, "summary": summary, "exit": ex, "reasons": reasons, "cautions": cautions,
             "waits": waits if verdict != "avoid" else [w for w in waits if "200" in w][:1],
             "score": round(overall * 100), "fund_score": round(fund * 100),
             "confidence": confidence, "checks": checks, "groups": GROUPS,

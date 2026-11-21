@@ -1,0 +1,32 @@
+name: Morning summary (סיכום בוקר)
+
+# Every morning (Israel time) after a US trading day: posts a GitHub issue with recommendation
+# changes and watchlist alerts. GitHub sends it to the owner by email and to the GitHub mobile app.
+on:
+  schedule:
+    - cron: "15 5 * * 2-6"   # 07:15 Israel in winter, 08:15 in summer
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build summary
+        id: s
+        env:
+          OWNER: ${{ github.repository_owner }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: echo "title=$(python scripts/morning.py)" >> "$GITHUB_OUTPUT"
+      - name: Post as issue (and close yesterday's)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: ${{ steps.s.outputs.title }}
+        run: |
+          gh label create morning --color FBCA04 --description "סיכום בוקר" 2>/dev/null || true
+          for n in $(gh issue list --label morning --state open --json number -q '.[].number'); do gh issue close "$n"; done
+          gh issue create --title "$TITLE" --body-file summary.md --label morning
