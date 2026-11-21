@@ -35,5 +35,5 @@ jobs:
           git add docs/data.json docs/history.json
           git diff --cached --quiet && exit 0
           git commit -m "Update data $(date -u +%F)"
-          git pull --rebase
-          git push
+          for i in 1 2 3 4; do git pull --rebase && git push && exit 0; echo "push failed, retry $i"; sleep $((i * 20)); done
+          exit 1
