@@ -371,7 +371,7 @@ def plain(c, m, f, ctx) -> str:
     if k == "growth":
         rg = _f(f.get("revenueGrowth"))
         tail = f" ({pc(rg)} בשנה)" if rg is not None else ""
-        return {GOOD: "המכירות של החברה גדלות מהר" + tail, OK: "המכירות של החברה גדלות לאט" + tail,
+        return {GOOD: "המכירות של החברה גדלות מהר" + tail, OK: "המכירות של החברה גדלות בקצב מתון" + tail,
                 BAD: "המכירות או הרווחים של החברה יורדים" + tail}[st]
     if k == "analysts":
         return {GOOD: "רוב המומחים שעוקבים אחרי החברה ממליצים לקנות", OK: "המומחים חלוקים בדעתם",
@@ -435,8 +435,6 @@ def consult(m: dict, f: dict, ctx: dict) -> dict:
         verdict = "wait"
     else:
         verdict = "avoid"
-    if verdict == "buy" and market_bad:
-        waits.append("הבורסה כולה בירידה, ולכן עדיף לקנות בכמה פעמים קטנות ולא בבת אחת")
 
     confidence = "גבוהה" if coverage > 0.8 and abs(overall) > 0.35 else "בינונית" if coverage > 0.55 else "נמוכה"
 
