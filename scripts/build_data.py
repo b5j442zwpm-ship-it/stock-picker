@@ -22,6 +22,9 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from verdict import consult, earnings_context  # noqa: E402
+
 import numpy as np
 import pandas as pd
 
@@ -154,13 +157,21 @@ def price_metrics(close: pd.Series, bench: pd.Series | None) -> dict:
     m1 = ret(21)
     mom_12_1 = ((1 + m12) / (1 + m1) - 1) if (m12 is not None and m1 is not None) else None
     var95 = float(-np.percentile(ry, 5))  # one-day 95% historical VaR
+    # Wilder RSI(14)
+    d = close.diff()
+    up = d.clip(lower=0).ewm(alpha=1 / 14, adjust=False).mean()
+    dn = (-d.clip(upper=0)).ewm(alpha=1 / 14, adjust=False).mean()
+    rsi = float(100 - 100 / (1 + up.iloc[-1] / dn.iloc[-1])) if dn.iloc[-1] > 0 else 100.0
+    ma20 = float(close.iloc[-20:].mean())
     spark = [round(float(v), 2) for v in close.iloc[-252::5]]
     return {"price": round(last, 2), "ret_1m": m1, "ret_3m": ret(63), "ret_6m": ret(126),
             "ret_1y": m12, "mom_12_1": mom_12_1, "vol": vol, "downside_vol": downside,
             "max_dd": dd, "beta": beta, "var95": var95,
             "above_ma200": (last > ma200) if ma200 else None,
             "ma50_vs_200": (ma50 / ma200 - 1) if ma200 else None,
-            "from_high": last / hi52 - 1, "spark": spark}
+            "from_high": last / hi52 - 1, "rsi14": rsi, "ret_5d": ret(5),
+            "ma20": round(ma20, 2), "ma50": round(ma50, 2), "ma200": round(ma200, 2) if ma200 else None,
+            "low_3m": round(float(close.iloc[-63:].min()), 2), "spark": spark}
 
 
 INFO_KEYS = ["shortName", "longName", "sector", "industry", "marketCap", "currency",
@@ -168,7 +179,27 @@ INFO_KEYS = ["shortName", "longName", "sector", "industry", "marketCap", "curren
              "enterpriseToEbitda", "profitMargins", "operatingMargins", "returnOnEquity",
              "debtToEquity", "currentRatio", "revenueGrowth", "earningsGrowth",
              "freeCashflow", "dividendYield", "targetMeanPrice", "recommendationMean",
-             "numberOfAnalystOpinions", "currentPrice"]
+             "numberOfAnalystOpinions", "currentPrice", "grossMargins", "totalCash", "totalDebt",
+             "operatingCashflow", "recommendationKey", "earningsTimestamp", "earningsTimestampStart",
+             "shortPercentOfFloat", "longBusinessSummary"]
+
+
+def fetch_earnings(t) -> list[dict]:
+    """Recent and upcoming earnings dates with EPS surprise, newest first."""
+    try:
+        df = t.get_earnings_dates(limit=8)
+    except Exception as e:  # noqa: BLE001
+        print(f"  earnings dates failed: {e}", file=sys.stderr)
+        return []
+    if df is None or df.empty:
+        return []
+    out = []
+    for idx, row in df.sort_index(ascending=False).iterrows():
+        est, rep = clean(row.get("EPS Estimate")), clean(row.get("Reported EPS"))
+        sur = (rep - est) / abs(est) if est not in (None, 0) and rep is not None else None
+        out.append({"date": pd.Timestamp(idx).isoformat(), "estimate": est, "reported": rep,
+                    "surprise": round(sur, 4) if sur is not None else None})
+    return out
 
 
 def fetch_all(universe, yf):
@@ -182,8 +213,10 @@ def fetch_all(universe, yf):
     for i, s in enumerate(syms):
         for attempt in range(3):
             try:
-                info = yf.Ticker(s).info or {}
+                t = yf.Ticker(s)
+                info = t.info or {}
                 infos[s] = {k: info.get(k) for k in INFO_KEYS}
+                infos[s]["_earnings"] = fetch_earnings(t) if not s.endswith(".TA") else []
                 break
             except Exception as e:  # noqa: BLE001
                 print(f"  info {s} attempt {attempt + 1}: {e}", file=sys.stderr)
@@ -401,6 +434,7 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
             for k, v in g(lambda r: r["news_raw"]).items()}
     lowrisk_rank = pct_rank(g(lambda r: r["m"]["vol"]), False)
 
+    regime = market_regime(closes, market_news)
     stocks = []
     for r in rows:
         k = r["symbol"]
@@ -410,6 +444,11 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
         lvl, rpts, rwhy = risk_level(r["m"], r["f"])
         pros, cons = explain(r)
         f = r["f"]
+        ectx = earnings_context(f, f.get("_earnings"))
+        neg_titles = [n["title"] for n in r["news"] if n["sentiment"] < 0][:2]
+        consultation = consult(r["m"], f, {**ectx, "upside": r["upside"], "news_score": r["news_raw"],
+                                           "news_count": r["news_count"], "neg_headlines": neg_titles,
+                                           "risk_level": lvl, "market": regime})
         stocks.append({
             "symbol": k, "market": r["market"],
             "name": f.get("shortName") or f.get("longName") or k, "name_he": r["name_he"],
@@ -424,9 +463,11 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
                                                      "earningsGrowth", "dividendYield", "targetMeanPrice",
                                                      "recommendationMean", "numberOfAnalystOpinions"]},
             "upside": r["upside"], "news_score": r["news_raw"], "news": r["news"][:8],
-            "pros": pros, "cons": cons,
+            "pros": pros, "cons": cons, "consult": consultation,
+            "about": (f.get("longBusinessSummary") or "")[:600],
+            "earnings": {"next": ectx.get("next_earnings"), "days": ectx.get("days_to_earnings"),
+                         "history": [e for e in (f.get("_earnings") or []) if e["surprise"] is not None][:4]},
         })
-    regime = market_regime(closes, market_news)
     return {"generated_at": datetime.now(timezone.utc).isoformat(timespec="minutes"),
             "count": len(stocks), "market": regime, "market_news": market_news[:12], "stocks": stocks}
 
