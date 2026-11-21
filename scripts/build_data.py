@@ -377,25 +377,25 @@ def market_regime(closes: pd.DataFrame, market_news: list[dict]) -> dict:
     pts, notes = 0, []
     if spy:
         if spy["above_ma200"]:
-            pts += 1; notes.append("S&P 500 מעל ממוצע 200 יום (מגמה עולה)")
+            pts += 1; notes.append("המניות הגדולות בארה\"ב בעלייה לאורך החודשים האחרונים")
         else:
-            pts -= 1; notes.append("S&P 500 מתחת לממוצע 200 יום (מגמה יורדת)")
+            pts -= 1; notes.append("המניות הגדולות בארה\"ב בירידה לאורך החודשים האחרונים")
     if vix is not None:
         if vix < 16:
-            pts += 1; notes.append(f"מדד הפחד VIX נמוך ({vix:.1f}), השוק רגוע")
+            pts += 1; notes.append(f"המשקיעים רגועים (מדד הפחד נמוך: {vix:.0f})")
         elif vix > 25:
-            pts -= 1; notes.append(f"מדד הפחד VIX גבוה ({vix:.1f}), תנודתיות מוגברת")
+            pts -= 1; notes.append(f"יש פחד בשוק, והמחירים קופצים חזק (מדד הפחד גבוה: {vix:.0f})")
         else:
-            notes.append(f"מדד הפחד VIX בינוני ({vix:.1f})")
+            notes.append(f"רמת לחץ רגילה בשוק (מדד הפחד: {vix:.0f})")
     if tnx_chg is not None and tnx_chg > 0.4:
-        pts -= 0.5; notes.append(f"תשואת אג\"ח 10 שנים עלתה ב-{tnx_chg:.2f} נק' ב-3 חודשים, לחץ על מכפילים")
+        pts -= 0.5; notes.append("הריבית בארה\"ב עלתה בחודשים האחרונים, וזה בדרך כלל לוחץ על מחירי המניות")
     if mnews is not None:
         if mnews < -0.15:
-            pts -= 0.5; notes.append("כותרות החדשות על השוק שליליות בשבועיים האחרונים")
+            pts -= 0.5; notes.append("רוב הכותרות על הבורסה בשבועיים האחרונים שליליות")
         elif mnews > 0.2:
-            pts += 0.5; notes.append("כותרות החדשות על השוק חיוביות בשבועיים האחרונים")
+            pts += 0.5; notes.append("רוב הכותרות על הבורסה בשבועיים האחרונים חיוביות")
     if ta:
-        notes.append("ת\"א 125 " + ("מעל" if ta["above_ma200"] else "מתחת ל") + "ממוצע 200 יום")
+        notes.append("בורסת תל אביב " + ("בעלייה" if ta["above_ma200"] else "בירידה") + " לאורך החודשים האחרונים")
     state = "positive" if pts >= 1.5 else "negative" if pts <= -1 else "neutral"
     return {"state": state, "points": pts, "notes": notes, "spy": spy, "qqq": qqq, "ta125": ta,
             "vix": vix, "tnx": tnx, "tnx_chg_3m": tnx_chg, "news_score": mnews,
@@ -551,11 +551,38 @@ def main():
     market_news = fetch_news("stock market OR Wall Street OR Federal Reserve", days=5, limit=15)
     market_news += fetch_news("Tel Aviv Stock Exchange OR Bank of Israel", days=7, limit=6)
     data = build(universe, closes, infos, news, market_news)
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
-    print(f"Wrote {OUT} with {data['count']} stocks")
     if data["count"] < len(universe) * 0.5:
         sys.exit("Too few stocks processed, refusing to publish a half-empty dataset")
+    write_split(data)
+    print(f"Wrote {OUT} with {data['count']} stocks")
+
+
+SUMMARY_KEYS = ["symbol", "market", "name", "name_he", "sector", "currency", "price", "upside"]
+
+
+def write_split(data: dict) -> None:
+    """data.json = the small list the home page needs; docs/s/<SYMBOL>.json = one stock's full check.
+    Keeps the first load on a phone fast."""
+    sdir = OUT.parent / "s"
+    sdir.mkdir(parents=True, exist_ok=True)
+    keep = set()
+    small = []
+    for st in data["stocks"]:
+        c = st["consult"]
+        small.append({**{k: st.get(k) for k in SUMMARY_KEYS},
+                      "risk": {"level": st["risk"]["level"]},
+                      "consult": {"verdict": c["verdict"], "score": c["score"], "summary": c["summary"],
+                                  "exit": c.get("exit") or {}},
+                      "metrics": {k: st["metrics"].get(k) for k in ("ret_1m", "ret_6m", "ret_1y")},
+                      "spark": st["spark"][::2]})
+        fn = st["symbol"] + ".json"
+        keep.add(fn)
+        (sdir / fn).write_text(json.dumps(st, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
+    for old in sdir.glob("*.json"):
+        if old.name not in keep:
+            old.unlink()
+    out = {**data, "stocks": small}
+    OUT.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ jobs:
         run: |
           git config user.name "stock-picker-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tickers.txt docs/data.json docs/history.json
+          git add tickers.txt docs
           git diff --cached --quiet && exit 0
           git commit -m "Add ${{ inputs.symbol }} and update data"
           for i in 1 2 3 4; do git pull --rebase && git push && exit 0; echo "push failed, retry $i"; sleep $((i * 20)); done

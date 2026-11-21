@@ -316,11 +316,84 @@ def exit_plan(m: dict, f: dict, upside) -> dict:
 
 
 def _r(c):
-    return {"status": c["status"], "title": c["title"], "text": c["text"]}
+    return {"status": c["status"], "title": c["title"], "text": c["text"], "plain": c.get("plain"), "key": c["key"]}
+
+
+SIMPLE_NAME = {"trend": "כיוון המחיר", "timing": "האם זה זמן טוב להיכנס", "earn_date": "דוח רווחים קרוב",
+               "earn_last": "הדוח האחרון", "value": "האם המחיר הוגן", "quality": "האם החברה מרוויחה",
+               "balance": "חובות ומזומן", "growth": "האם החברה גדלה", "analysts": "מה חושבים המומחים",
+               "news": "מה כותבים בחדשות", "risk": "כמה המניה קופצת", "market": "מצב הבורסה כולה"}
+
+
+def plain(c, m, f, ctx) -> str:
+    """The same finding, in words for someone who has never invested."""
+    k, st, t = c["key"], c["status"], c["title"]
+    pc = lambda x: _pct(x) if x is not None else ""  # noqa: E731
+    if st == NA:
+        return "אין מספיק מידע לבדיקה הזו"
+    if k == "trend":
+        r3 = m.get("ret_3m")
+        tail = f" ({pc(r3)} בשלושה חודשים)" if r3 is not None else ""
+        return {GOOD: "המחיר עולה בחודשים האחרונים" + tail, OK: "המחיר לא בכיוון ברור, לא עולה ולא יורד בעקביות" + tail,
+                BAD: "המחיר יורד בחודשים האחרונים" + tail}[st]
+    if k == "timing":
+        if st == GOOD:
+            return "המחיר לא קפץ ולא צנח לאחרונה. זו נקודה סבירה לקנות"
+        if st == OK:
+            return "אין סימן מיוחד לגבי התזמון"
+        if t.startswith("מתוחה"):
+            return "המניה עלתה מהר מאוד לאחרונה. אחרי קפיצה כזו היא לרוב יורדת קצת"
+        return f"המניה צונחת עכשיו ({pc(m.get('ret_1m'))} בחודש). קשה לדעת איפה היא תעצור"
+    if k == "earn_date":
+        d = ctx.get("days_to_earnings")
+        return {GOOD: "אין דוח רווחים בשבועות הקרובים",
+                OK: f"החברה תפרסם דוח רווחים בעוד {d} ימים",
+                BAD: f"בעוד {d} ימים החברה מפרסמת דוח רווחים, ואז המחיר יכול לקפוץ חזק לכל כיוון"}[st]
+    if k == "earn_last":
+        return {GOOD: "בדוח האחרון החברה הרוויחה יותר ממה שציפו", OK: "בדוח האחרון החברה הרוויחה בערך כמו שציפו",
+                BAD: "בדוח האחרון החברה הרוויחה פחות ממה שציפו"}[st]
+    if k == "value":
+        if st == GOOD:
+            return "המחיר זול יחסית לכמה שהחברה מרוויחה"
+        if st == OK:
+            return "המניה יקרה, אבל החברה גדלה מהר וזה מצדיק חלק מהמחיר" if t.startswith("יקרה") else "המחיר סביר ביחס לרווחים"
+        if "מפסידה" in t:
+            return "החברה עדיין מפסידה כסף, אז מי שקונה משלם בעיקר על תקווה לעתיד"
+        return "המניה יקרה ביחס לכמה שהחברה מרוויחה. אם החברה תאכזב, המחיר עלול לרדת חזק"
+    if k == "quality":
+        pm = _f(f.get("profitMargins"))
+        if st == GOOD:
+            return "החברה מרוויחה יפה" + (f": מכל 100 ₪ של מכירות נשארים לה בערך {pm * 100:.0f} ₪ רווח" if pm and pm > 0 else "")
+        return {OK: "החברה רווחית במידה סבירה", BAD: "החברה מרוויחה מעט מאוד או מפסידה כסף"}[st]
+    if k == "balance":
+        return {GOOD: "לחברה יש מספיק מזומן, והחובות שלה לא מסוכנים", OK: "מצב החובות של החברה סביר",
+                BAD: "לחברה הרבה חובות, או שיוצא ממנה יותר כסף ממה שנכנס"}[st]
+    if k == "growth":
+        rg = _f(f.get("revenueGrowth"))
+        tail = f" ({pc(rg)} בשנה)" if rg is not None else ""
+        return {GOOD: "המכירות של החברה גדלות מהר" + tail, OK: "המכירות של החברה גדלות לאט" + tail,
+                BAD: "המכירות או הרווחים של החברה יורדים" + tail}[st]
+    if k == "analysts":
+        return {GOOD: "רוב המומחים שעוקבים אחרי החברה ממליצים לקנות", OK: "המומחים חלוקים בדעתם",
+                BAD: "המומחים לא ממליצים, או שהמחיר כבר גבוה ממה שהם צופים"}[st]
+    if k == "news":
+        return {GOOD: "רוב הכותרות מהשבועיים האחרונים חיוביות", OK: "בחדשות האחרונות אין כיוון ברור",
+                BAD: "הרבה כותרות שליליות בשבועיים האחרונים"}[st]
+    if k == "risk":
+        dd = m.get("max_dd")
+        return {GOOD: "מניה רגועה יחסית, בדרך כלל בלי קפיצות חזקות", OK: "המניה קופצת בצורה בינונית",
+                BAD: "מניה שקופצת חזק" + (f": בשנה האחרונה היא ירדה בשלב מסוים {abs(dd) * 100:.0f}% מהשיא" if dd else "")}[st]
+    if k == "market":
+        return {GOOD: "הבורסה כולה בעלייה, וזה עוזר לרוב המניות", OK: "לבורסה כולה אין כרגע כיוון ברור",
+                BAD: "הבורסה כולה בירידה. בתקופה כזו גם מניות טובות יורדות"}[st]
+    return c["text"]
 
 
 def consult(m: dict, f: dict, ctx: dict) -> dict:
     checks = [fn(m, f, ctx) for fn in CHECKS]
+    for c in checks:
+        c["name"] = SIMPLE_NAME.get(c["key"], c["title"])
+        c["plain"] = plain(c, m, f, ctx)
     by = {c["key"]: c for c in checks}
     overall, w_all = _score(checks)
     fund, w_fund = _score(checks, "fund")
@@ -341,17 +414,17 @@ def consult(m: dict, f: dict, ctx: dict) -> dict:
     # ---- decision tree -----------------------------------------------------------------
     waits = []  # concrete things to wait for
     if earn_soon:
-        waits.append(f"לחכות לפרסום הדוח ב-{ctx.get('next_earnings')} ולתגובת השוק")
+        waits.append(f"לחכות לדוח הרווחים ב-{ctx.get('next_earnings')}. סביב הדוח המחיר יכול לקפוץ חזק לכל כיוון")
     if timing == BAD and by["timing"]["title"].startswith("מתוחה") and m.get("ma50"):
-        waits.append(f"לחכות לתיקון לכיוון ממוצע 50 יום (בערך {m['ma50']:.2f}) או להיכנס בחלקים קטנים")
+        waits.append(f"המניה עלתה מהר לאחרונה. עדיף לחכות שתרד קצת, לבערך {m['ma50']:.2f}, או לקנות בכמה פעמים קטנות")
     if timing == BAD and by["timing"]["title"].startswith("בנפילה"):
-        waits.append("לחכות שהמחיר יפסיק לרדת ויחזור מעל ממוצע 20 יום" + (f" ({m['ma20']:.2f})" if m.get("ma20") else ""))
+        waits.append("לחכות שהמחיר יפסיק לרדת" + (f" ויחזור מעל {m['ma20']:.2f}" if m.get("ma20") else ""))
     if trend != GOOD and m.get("ma200") and p and p < m["ma200"]:
-        waits.append(f"לחכות שהמחיר יחזור מעל ממוצע 200 יום (בערך {m['ma200']:.2f})")
+        waits.append(f"לחכות שהמחיר יעלה מעל {m['ma200']:.2f}. זה יהיה סימן שהירידה הארוכה נגמרה")
     elif trend != GOOD and m.get("ma50") and p and p < m["ma50"]:
-        waits.append(f"לחכות שהמחיר יחזור מעל ממוצע 50 יום (בערך {m['ma50']:.2f})")
+        waits.append(f"לחכות שהמחיר יעלה מעל {m['ma50']:.2f}. זה יהיה סימן שהמניה חזרה לעלות")
     if market_bad:
-        waits.append("לחכות שהשוק הכללי יתייצב, או לקנות בהדרגה")
+        waits.append("הבורסה כולה בירידה. אם קונים, עדיף בכמה פעמים קטנות ולא בבת אחת")
 
     if fund <= -0.35 or (trend == BAD and fund < 0.1) or overall <= -0.3:
         verdict = "avoid"
@@ -363,7 +436,7 @@ def consult(m: dict, f: dict, ctx: dict) -> dict:
     else:
         verdict = "avoid"
     if verdict == "buy" and market_bad:
-        waits.append("השוק הכללי בלחץ, ולכן כדאי לקנות בחלקים ולא בבת אחת")
+        waits.append("הבורסה כולה בירידה, ולכן עדיף לקנות בכמה פעמים קטנות ולא בבת אחת")
 
     confidence = "גבוהה" if coverage > 0.8 and abs(overall) > 0.35 else "בינונית" if coverage > 0.55 else "נמוכה"
 
@@ -372,18 +445,18 @@ def consult(m: dict, f: dict, ctx: dict) -> dict:
         return sorted(lst, key=lambda c: -c["weight"])[:n]
 
     if verdict == "buy":
-        summary = "העסק במצב טוב, המגמה עולה ואין כרגע סיבה מיוחדת לחכות."
+        summary = "חברה במצב טוב, והמחיר בעלייה. אין כרגע סיבה מיוחדת לחכות."
         reasons = [_r(c) for c in top(greens, 4)]
         cautions = [c["title"] for c in reds]
     elif verdict == "wait":
         if fund >= 0.2 and (earn_soon or timing == BAD or trend != GOOD or market_bad):
-            summary = "המניה נראית טובה, אבל התזמון עכשיו לא אידיאלי."
+            summary = "חברה טובה, אבל זה לא הרגע הכי טוב לקנות."
         else:
-            summary = "התמונה מעורבת: יש נקודות חזקות לצד חולשות. עדיף לחכות לבהירות."
+            summary = "יש דברים טובים ויש דברים פחות טובים. עדיף לחכות שהתמונה תתבהר."
         reasons = [_r(c) for c in top(reds, 3)] + [_r(c) for c in top(greens, 2)]
         cautions = []
     else:
-        summary = "יותר מדי סימני אזהרה כרגע. יש היום מניות עם תמונה טובה יותר."
+        summary = "יותר מדי סימני אזהרה כרגע. יש היום מניות במצב טוב יותר."
         reasons = [_r(c) for c in top(reds, 4)]
         cautions = [c["title"] for c in greens]
 
@@ -391,7 +464,7 @@ def consult(m: dict, f: dict, ctx: dict) -> dict:
     return {"verdict": verdict, "summary": summary, "exit": ex, "reasons": reasons, "cautions": cautions,
             "waits": waits if verdict != "avoid" else [w for w in waits if "200" in w][:1],
             "score": round(overall * 100), "fund_score": round(fund * 100),
-            "confidence": confidence, "checks": checks, "groups": GROUPS,
+            "confidence": confidence, "checks": checks,
             "counts": {"good": len(greens), "bad": len(reds),
                        "ok": sum(1 for c in checks if c["status"] == OK)}}
 

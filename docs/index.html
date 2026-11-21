@@ -3,512 +3,393 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f6f8">
 <title>בורר המניות</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f6f7f9;--card:#fff;--ink:#141821;--muted:#5d6676;--line:#e3e6eb;--soft:#eef1f5;
-  --accent:#2357d9;--pos:#12805c;--neg:#c3352b;--warn:#b26a00;
-  --r1:#12805c;--r2:#5a9a2f;--r3:#b98a00;--r4:#d0631c;--r5:#c3352b;
+  --bg:#f5f6f8;--card:#fff;--ink:#151922;--muted:#5f6878;--line:#e4e7ec;--soft:#eef1f5;
+  --accent:#2357d9;--pos:#11805b;--neg:#c3352b;--warn:#a86400;
+  --posbg:#e3f4ec;--negbg:#fbe9e7;--warnbg:#fbf0dc;
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:#0f1218;--card:#171b23;--ink:#e8ebf0;--muted:#97a0ae;--line:#2a303b;--soft:#202632;
-  --accent:#7ea2ff;--pos:#3ccf95;--neg:#ff7a6e;--warn:#f0b13c;
-  --r1:#3ccf95;--r2:#9bd45a;--r3:#e8c23a;--r4:#f28a45;--r5:#ff6b5f;}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1218;--card:#171b23;--ink:#e9ecf1;--muted:#9aa3b1;--line:#2a303b;--soft:#202632;
+  --accent:#86a8ff;--pos:#41d19a;--neg:#ff7d71;--warn:#f1b443;
+  --posbg:#173326;--negbg:#3a1e1c;--warnbg:#3a2d14;}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:Assistant,system-ui,sans-serif;font-size:16px;line-height:1.5}
-.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
-header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.3px}
-h2{font-size:18px;margin:0 0 10px}
-.muted{color:var(--muted)} .small{font-size:13px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
-.disc{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:13px;color:var(--muted);margin-bottom:16px}
-.grid2{display:grid;grid-template-columns:1.2fr 1fr;gap:14px;margin-bottom:14px}
-@media(max-width:820px){.grid2{grid-template-columns:1fr}}
-.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-weight:700;font-size:14px}
-.st-positive{background:color-mix(in srgb,var(--pos) 15%,transparent);color:var(--pos)}
-.st-neutral{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
-.st-negative{background:color-mix(in srgb,var(--neg) 15%,transparent);color:var(--neg)}
-ul.notes{margin:8px 0 0;padding-inline-start:18px} ul.notes li{margin:2px 0}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
-@media(max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}}
-.kpi{background:var(--soft);border-radius:10px;padding:8px 10px}
-.kpi b{display:block;font-size:17px;font-variant-numeric:tabular-nums} .kpi span{font-size:12px;color:var(--muted)}
-.news a{color:inherit;text-decoration:none} .news a:hover{text-decoration:underline}
-.news li{list-style:none;padding:6px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:flex-start;font-size:14px}
-.news ul{margin:0;padding:0;max-height:300px;overflow:auto}
-.dot{flex:none;width:9px;height:9px;border-radius:50%;margin-top:7px;background:var(--muted)}
-.dot.p{background:var(--pos)} .dot.n{background:var(--neg)}
-.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin:4px 0 14px}
-.seg{display:inline-flex;background:var(--soft);border-radius:10px;padding:3px}
-.seg button{border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
-.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
-select,input[type=search]{font:inherit;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:6px 10px}
-input[type=search]{min-width:160px}
-label.ctl{display:inline-flex;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
-.profile-note{font-size:14px;color:var(--muted);margin:-6px 0 12px}
-table{width:100%;border-collapse:collapse}
-th{font-size:13px;color:var(--muted);font-weight:600;text-align:start;padding:8px 8px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
-td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle;font-variant-numeric:tabular-nums}
-tr.row{cursor:pointer} tr.row:hover td{background:var(--soft)}
-.nm b{display:block} .nm span{font-size:12px;color:var(--muted)}
-.score{display:flex;align-items:center;gap:8px;min-width:120px}
-.bar{flex:1;height:8px;border-radius:4px;background:var(--soft);overflow:hidden}
-.bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
-.risk{display:inline-block;min-width:74px;text-align:center;border-radius:8px;padding:2px 8px;font-weight:700;font-size:13px;color:#fff}
-.r1{background:var(--r1)}.r2{background:var(--r2)}.r3{background:var(--r3)}.r4{background:var(--r4)}.r5{background:var(--r5)}
-@media (prefers-color-scheme:dark){.risk{color:#10131a}}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Assistant,system-ui,sans-serif;font-size:17px;line-height:1.55}
+a{color:var(--accent)}
+.wrap{max-width:860px;margin:0 auto;padding:18px 16px 90px}
+h1{margin:0;font-size:28px;font-weight:800}
+h2{font-size:20px;margin:0 0 10px;font-weight:800}
+h3{font-size:16px;margin:16px 0 6px}
+.muted{color:var(--muted)} .small{font-size:14px} .tiny{font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.disc{font-size:13.5px;color:var(--muted);margin:0 0 14px}
+.warnbox{border:1px solid var(--warn);color:var(--warn);border-radius:12px;padding:8px 12px;margin-bottom:12px;font-size:14px}
+/* search */
+.search h2{font-size:22px}
+.sq{display:flex;gap:8px}
+.sq input{flex:1;min-width:0;font:inherit;font-size:18px;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+.sq input:focus{outline:2px solid var(--accent);border-color:transparent}
+.btn{font:inherit;font-weight:700;border:0;border-radius:12px;padding:12px 20px;background:var(--accent);color:#fff;cursor:pointer;white-space:nowrap}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn{color:#0f1218}}
+.sugg{margin-top:8px;border:1px solid var(--line);border-radius:12px;overflow:hidden;display:none}
+.sugg.on{display:block}
+.sugg button{display:flex;width:100%;justify-content:space-between;gap:8px;border:0;border-bottom:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;padding:10px 12px;text-align:start;cursor:pointer}
+.sugg button:last-child{border-bottom:0}
+.sugg button:hover{background:var(--soft)}
+.notfound{margin-top:10px}
+/* market light */
+.light{display:flex;gap:12px;align-items:flex-start}
+.dotbig{flex:none;width:18px;height:18px;border-radius:50%;margin-top:6px}
+.d-positive{background:var(--pos)} .d-neutral{background:var(--warn)} .d-negative{background:var(--neg)}
+details summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:15px;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:"◂ ";display:inline-block;transition:transform .15s}
+details[open] summary::before{transform:rotate(-90deg)}
+ul.plain{margin:8px 0 0;padding-inline-start:20px} ul.plain li{margin:3px 0}
+/* tabs */
+.tabs{display:flex;gap:6px;overflow-x:auto;margin:0 -16px 12px;padding:0 16px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-weight:700;font-size:15px;border-radius:999px;padding:8px 14px;cursor:pointer}
+.tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab .n{font-weight:600;opacity:.7}
+/* stock rows / cards */
+.list{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:10px;padding:12px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.row:last-child{border-bottom:0}
+.row:hover{background:var(--soft)}
+.row .nm{flex:1;min-width:0}
+.row .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .nm span{font-size:13px;color:var(--muted)}
+.row .side{text-align:end;font-size:13px;color:var(--muted);white-space:nowrap}
+.vd{display:inline-block;border-radius:999px;padding:3px 11px;font-weight:800;font-size:14px;white-space:nowrap}
+.v-buy{background:var(--posbg);color:var(--pos)} .v-wait{background:var(--warnbg);color:var(--warn)} .v-avoid{background:var(--negbg);color:var(--neg)}
 .pos{color:var(--pos)} .neg{color:var(--neg)}
-.hide-sm{} @media(max-width:700px){.hide-sm{display:none}}
-.tablewrap{overflow-x:auto}
-/* drawer */
-.ov{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;z-index:10}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chip{border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:5px 12px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.chip.on{border-color:var(--accent);color:var(--accent);background:var(--card)}
+.empty{padding:20px 6px;color:var(--muted);text-align:center}
+.alert{display:inline-block;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);border-radius:8px;padding:1px 8px;font-size:13px;font-weight:700;margin-top:3px}
+/* stock page */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:10}
 .ov.on{display:block}
-.drawer{position:fixed;top:0;bottom:0;left:0;width:min(560px,100%);background:var(--card);z-index:11;overflow:auto;padding:20px 18px 40px;transform:translateX(-105%);transition:transform .2s;border-inline-end:1px solid var(--line)}
-.drawer.on{transform:none}
-.x{float:left;border:0;background:var(--soft);color:var(--ink);border-radius:8px;width:34px;height:34px;font-size:18px;cursor:pointer}
-.fac{display:grid;grid-template-columns:110px 1fr 36px;gap:8px;align-items:center;font-size:14px;margin:5px 0}
-.pc{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
-@media(max-width:520px){.pc{grid-template-columns:1fr}}
-.pc div{background:var(--soft);border-radius:10px;padding:10px 12px;font-size:14px}
-.pc ul{margin:4px 0 0;padding-inline-start:18px}
-.mt{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:13px}
-.mt div{background:var(--soft);border-radius:8px;padding:6px 8px} .mt b{display:block;font-size:15px}
-details.method{margin-top:18px} details.method summary{cursor:pointer;font-weight:700}
-.warnbox{border:1px solid var(--warn);color:var(--warn);border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:14px}
-.empty{padding:30px;text-align:center;color:var(--muted)}
-/* consultation */
-.consult h2{font-size:20px}
-.cq{display:flex;gap:8px;flex-wrap:wrap}
-.cq input{flex:1;min-width:200px;font-size:17px;padding:10px 12px}
-.btn{font:inherit;font-weight:700;border:0;border-radius:10px;padding:10px 18px;background:var(--accent);color:#fff;cursor:pointer}
-@media (prefers-color-scheme:dark){.btn{color:#0f1218}}
-.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.chip{border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:999px;padding:3px 10px;font:inherit;font-size:13px;cursor:pointer}
-.notfound{margin-top:10px;font-size:14px}
-.vd{display:inline-block;border-radius:8px;padding:2px 9px;font-weight:700;font-size:13px;white-space:nowrap}
-.v-buy{background:color-mix(in srgb,var(--pos) 16%,transparent);color:var(--pos)}
-.v-wait{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
-.v-avoid{background:color-mix(in srgb,var(--neg) 15%,transparent);color:var(--neg)}
-.hero{border-radius:14px;padding:14px 16px;margin:14px 0}
-.hero.v-buy{border:1.5px solid var(--pos)} .hero.v-wait{border:1.5px solid var(--warn)} .hero.v-avoid{border:1.5px solid var(--neg)}
-.hero .big{font-size:26px;font-weight:800;line-height:1.2}
-.hero p{margin:6px 0 0;color:var(--ink)}
-.hero ul{margin:8px 0 0;padding-inline-start:18px;color:var(--ink);font-size:14px}
-.hero .meta{font-size:12px;color:var(--muted);margin-top:8px}
-.ck{display:grid;grid-template-columns:24px 1fr;gap:4px 8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
-.ck .ic{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff}
+.page{position:fixed;inset:0 auto 0 0;width:min(600px,100%);background:var(--bg);z-index:11;overflow:auto;padding:14px 16px 100px;transform:translateX(-105%);transition:transform .2s;overscroll-behavior:contain}
+.page.on{transform:none}
+.page.wide{width:min(920px,100%)}
+.pbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
+.x{border:0;background:var(--soft);color:var(--ink);border-radius:10px;min-width:40px;height:40px;font-size:15px;font-weight:700;cursor:pointer;padding:0 12px}
+.verdict{border-radius:16px;padding:16px;margin:12px 0}
+.verdict .big{font-size:30px;font-weight:800;line-height:1.15}
+.verdict p{margin:6px 0 0;color:var(--ink);font-size:18px}
+.vb-buy{background:var(--posbg);color:var(--pos)} .vb-wait{background:var(--warnbg);color:var(--warn)} .vb-avoid{background:var(--negbg);color:var(--neg)}
+.why{list-style:none;margin:0;padding:0}
+.why li{display:grid;grid-template-columns:26px 1fr;gap:8px;padding:7px 0;align-items:start}
+.ic{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;margin-top:2px}
 .ic.good{background:var(--pos)} .ic.ok{background:var(--warn)} .ic.bad{background:var(--neg)} .ic.na{background:var(--muted)}
-@media (prefers-color-scheme:dark){.ck .ic{color:#10131a}}
-.ck b{display:block} .ck span{color:var(--muted)}
-.grp{font-size:13px;font-weight:700;color:var(--muted);margin:14px 0 2px}
-.tally{display:flex;gap:12px;font-size:13px;margin-top:6px}
-.hero .ck b{color:var(--ink)}
-.exitbox{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
-.exitbox div{background:var(--card);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
-.exitbox b{display:block;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
-.acts{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
-.btn2{font:inherit;font-weight:600;font-size:14px;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:10px;padding:6px 12px;cursor:pointer}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .ic{color:#10131a}}
+.why b{display:block;font-size:15px}
+.why span{color:var(--muted);font-size:15px}
+.plan{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.plan div{border-radius:12px;padding:10px 12px;background:var(--soft)}
+.plan b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.plan span{font-size:13.5px;color:var(--muted)}
+.meter{display:flex;gap:4px;margin:8px 0 4px}
+.meter i{flex:1;height:10px;border-radius:5px;background:var(--soft)}
+.meter i.f1{background:#2fa36b}.meter i.f2{background:#86b83a}.meter i.f3{background:#d1a320}.meter i.f4{background:#e07a2c}.meter i.f5{background:#d8443a}
+.acts{display:flex;gap:8px;margin-top:4px}
+.btn2{flex:1;font:inherit;font-weight:700;font-size:15px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px;cursor:pointer}
 .btn2.on{border-color:var(--accent);color:var(--accent)}
-.wl li{list-style:none;padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
-.wl ul{margin:0;padding:0;max-height:340px;overflow:auto}
-.wl .nm{flex:1;min-width:120px;cursor:pointer}
-.wl input{width:84px;font:inherit;font-size:13px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:3px 6px}
-.alert{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);border-radius:8px;padding:1px 8px;font-size:12px;font-weight:700}
-.tbar{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);border-radius:999px;padding:8px 10px 8px 16px;display:none;gap:10px;align-items:center;z-index:9;box-shadow:0 4px 18px rgba(0,0,0,.25);font-size:14px;max-width:calc(100% - 32px)}
+.page details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:10px}
+.page details[open] summary{margin-bottom:6px}
+.news a{color:inherit;text-decoration:none} .news li{padding:6px 0;border-bottom:1px solid var(--line);list-style:none;font-size:14.5px}
+.news ul{margin:0;padding:0}
+.mt{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:13px}
+@media(max-width:460px){.mt{grid-template-columns:repeat(2,1fr)}}
+.mt div{background:var(--soft);border-radius:8px;padding:6px 8px} .mt b{display:block;font-size:15px}
+.cmp{width:100%;border-collapse:collapse;font-size:14px}
+.cmp th,.cmp td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:start;vertical-align:top}
+.cmp th{color:var(--muted);font-weight:600}
+.cmp thead th{color:var(--ink);font-size:15px}
+.tw{overflow-x:auto}
+.tbar{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);border-radius:999px;padding:8px 8px 8px 16px;display:none;gap:10px;align-items:center;z-index:12;box-shadow:0 6px 20px rgba(0,0,0,.25);font-size:14px;max-width:calc(100% - 32px)}
 .tbar.on{display:flex}
-.tbar button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:5px 12px;cursor:pointer}
-.cmp{width:100%;border-collapse:collapse;font-size:13px}
-.cmp th,.cmp td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:start;vertical-align:top;cursor:default}
-.cmp th{color:var(--muted);font-weight:600;white-space:normal}
-.cmp thead th{color:var(--ink);font-size:14px}
-.drawer.wide{width:min(900px,100%)}
-.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
-@media(max-width:620px){.stat{grid-template-columns:repeat(2,1fr)}}
-.stat div{background:var(--soft);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
-.stat b{display:block;font-size:18px;color:var(--ink);font-variant-numeric:tabular-nums}
+body.pgopen .tbar{display:none}
+.more{width:100%;margin-top:8px}
+.tbar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tbar button{font:inherit;font-weight:800;border:0;border-radius:999px;padding:6px 14px;cursor:pointer;flex:none}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.stat div{background:var(--soft);border-radius:12px;padding:10px 12px;font-size:14px}
+.stat b{display:block;font-size:22px}
+dl.gl dt{font-weight:800;margin-top:10px} dl.gl dd{margin:2px 0 0;color:var(--muted)}
+.spin{padding:30px;text-align:center;color:var(--muted)}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div>
-      <h1>בורר המניות</h1>
-      <div class="muted small" id="updated">טוען נתונים…</div>
-    </div>
-    <div class="small muted">ציון 0–100 = עד כמה המניה טובה מהשאר לפי הפרופיל שבחרת</div>
-  </header>
+  <div class="top">
+    <h1>בורר המניות</h1>
+    <div class="muted tiny" id="updated">טוען…</div>
+  </div>
+  <p class="disc">⚠️ כלי עזר, לא ייעוץ השקעות. הוא בודק עובדות על כל מניה ומסכם אותן, אבל אף אחד לא יודע מה יקרה מחר. <a href="#" onclick="openGlossary();return false">מה כל מושג אומר?</a></p>
+  <div id="warn"></div>
 
-  <div class="disc">⚠️ זהו כלי עזר לסינון ולהבנת סיכון, לא ייעוץ השקעות. אף מודל לא חוזה מחירים. הנתונים מ-Yahoo Finance ו-Google News, מתעדכנים פעם ביום, ועלולים להכיל טעויות. לפני החלטה כדאי לקרוא את החדשות ואת הדוחות של החברה ולפזר סיכונים.</div>
-  <div id="synthetic"></div>
-
-  <section class="card consult" style="margin-bottom:14px">
-    <h2>בדיקת מניה: לקנות עכשיו, לחכות או לא לקנות?</h2>
-    <div class="muted small" style="margin-bottom:10px">בחר מניה וקבל המלצה עם הסיבות. כל בדיקה עוברת על 12 נקודות: מגמה, נקודת כניסה, דוח קרוב, הדוח האחרון, תמחור, רווחיות, מאזן, צמיחה, אנליסטים, חדשות, סיכון ומצב השוק.</div>
-    <form class="cq" id="cform" autocomplete="off">
-      <input id="cq" list="clist" placeholder="שם או סימול, למשל אנבידיה או NVDA" aria-label="בחירת מניה">
-      <datalist id="clist"></datalist>
+  <section class="card search">
+    <h2>איזו מניה מעניינת אותך?</h2>
+    <form class="sq" id="sform" autocomplete="off">
+      <input id="sq" placeholder="למשל: אפל, טבע, NVDA" aria-label="חיפוש מניה" enterkeyhint="search">
       <button class="btn" type="submit">בדוק</button>
     </form>
-    <div class="chips" id="cchips"></div>
-    <div id="cnf"></div>
+    <div class="sugg" id="sugg"></div>
+    <div id="nf"></div>
+    <p class="muted tiny" style="margin:8px 0 0">התשובה: <span class="vd v-buy">לקנות עכשיו</span> <span class="vd v-wait">לחכות</span> או <span class="vd v-avoid">לא לקנות</span>, עם הסבר למה.</p>
   </section>
 
-  <div class="grid2">
-    <section class="card wl" id="watch"></section>
-    <section class="card wl" id="changes"></section>
-  </div>
+  <section class="card" id="market"></section>
 
-  <div class="grid2">
-    <section class="card" id="market"></section>
-    <section class="card news" id="mnews"><h2>כותרות מהשוק</h2><ul></ul></section>
-  </div>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <section class="card" id="panel"></section>
 
-  <section class="card">
-    <div class="controls">
-      <div class="seg" id="profile">
-        <button data-p="conservative">שמרני</button>
-        <button data-p="balanced" class="on">מאוזן</button>
-        <button data-p="aggressive">אגרסיבי</button>
-      </div>
-      <div class="seg" id="mkt">
-        <button data-m="all" class="on">הכל</button>
-        <button data-m="US">ארה"ב</button>
-        <button data-m="TA">ת"א</button>
-      </div>
-      <label class="ctl">סקטור <select id="sector"><option value="">הכל</option></select></label>
-      <label class="ctl">סיכון מקסימלי <select id="maxrisk">
-        <option value="1">1 נמוך</option><option value="2">2</option><option value="3">3 בינוני</option><option value="4">4</option><option value="5" selected>5 הכל</option></select></label>
-      <label class="ctl">המלצה <select id="vf"><option value="">הכל</option><option value="buy">לקנות עכשיו</option><option value="wait">לחכות</option><option value="avoid">לא לקנות</option></select></label>
-      <input type="search" id="q" placeholder="חיפוש מניה…">
-    </div>
-    <div class="profile-note" id="pnote"></div>
-    <div class="tablewrap"><table>
-      <thead><tr>
-        <th data-s="rank">#</th><th data-s="name">מניה</th><th data-s="total">ציון</th><th data-s="v">המלצה</th><th data-s="risk">סיכון</th>
-        <th data-s="r6" class="hide-sm">6 חודשים</th><th data-s="r1y" class="hide-sm">שנה</th><th data-s="up" class="hide-sm">יעד אנליסטים</th><th class="hide-sm">מגמה שנתית</th>
-      </tr></thead>
-      <tbody id="tb"></tbody>
-    </table></div>
-  </section>
-
-  <section class="card" id="track" style="margin:14px 0"></section>
-
-  <details class="method card">
-    <summary>איך הציון והסיכון מחושבים?</summary>
-    <p>לכל מניה מחושבים 7 מרכיבים. כל מרכיב הוא <b>אחוזון</b> בתוך הרשימה: 80 פירושו שהמניה טובה מ-80% מהמניות האחרות באותו מרכיב.</p>
-    <ul>
-      <li><b>מומנטום</b>: תשואה ב-12 החודשים האחרונים (בלי החודש האחרון), תשואה בחצי שנה, ממוצע 50 יום מול 200 יום.</li>
-      <li><b>תמחור</b>: מכפיל רווח עתידי ונוכחי, PEG, ושווי לעומת EBITDA. נמוך יותר = זול יותר = ציון גבוה.</li>
-      <li><b>איכות</b>: תשואה על ההון, שולי רווח נקי ותפעולי, ומינוף נמוך.</li>
-      <li><b>צמיחה</b>: צמיחה בהכנסות וברווחים.</li>
-      <li><b>אנליסטים</b>: פער ממחיר היעד הממוצע ודירוג ההמלצה הממוצע.</li>
-      <li><b>חדשות</b>: ניתוח טון של כותרות מהשבועיים האחרונים (כותרות חדשות שוקלות יותר). זה ניתוח מילים פשוט, לא הבנה מלאה, ולכן משקלו נמוך.</li>
-      <li><b>יציבות</b>: תנודתיות נמוכה.</li>
-    </ul>
-    <p>הפרופיל קובע את המשקלות: שמרני מדגיש איכות, תמחור ויציבות. אגרסיבי מדגיש מומנטום וצמיחה. מאוזן באמצע.</p>
-    <p><b>רמת סיכון 1–5</b> היא מוחלטת (לא יחסית): מבוססת על תנודתיות שנתית, הירידה המקסימלית בשנה האחרונה, בטא (כמה המניה מגיבה לתנודות השוק), מינוף וגודל החברה. 1 = מניה יציבה כמו חברת מוצרי צריכה גדולה, 5 = מניה שיכולה לרדת 40% ויותר בתקופה קשה.</p>
-    <p><b>מצב השוק</b> נקבע לפי מגמת S&P 500 מול ממוצע 200 יום, מדד הפחד VIX, שינוי בתשואות אג"ח וטון החדשות. כשמצב השוק זהיר, מומלץ להעדיף מניות בסיכון נמוך ולהשקיע בהדרגה.</p>
-    <p class="muted small">ידוע שמחקרים מצאו שמומנטום, איכות ותמחור זול נותנים יתרון קטן לאורך זמן, אבל היתרון לא מובטח, ויש שנים שבהן כל אחד מהם נכשל.</p>
-  </details>
+  <section class="card" id="track"></section>
 </div>
 
 <div class="tbar" id="tbar"></div>
 <div class="ov" id="ov"></div>
-<aside class="drawer" id="dr" aria-live="polite"></aside>
+<aside class="page" id="pg" aria-live="polite"></aside>
 
 <script>
-const PROFILES = {
-  conservative:{label:'שמרני', w:{quality:.30,value:.20,low_vol:.20,analysts:.10,momentum:.10,growth:.05,news:.05}, maxRisk:3,
-    note:'מדגיש חברות רווחיות, זולות ויציבות. מסתיר כברירת מחדל מניות בסיכון 4–5.'},
-  balanced:{label:'מאוזן', w:{momentum:.20,quality:.20,value:.15,growth:.15,analysts:.10,low_vol:.10,news:.10}, maxRisk:5,
-    note:'שילוב שווה בערך של מגמה, איכות, תמחור וצמיחה.'},
-  aggressive:{label:'אגרסיבי', w:{momentum:.30,growth:.25,analysts:.10,news:.10,quality:.10,value:.10,low_vol:.05}, maxRisk:5,
-    note:'מדגיש מגמה חזקה וצמיחה מהירה. ציפייה לתנודות גדולות.'}
-};
-const FAC = {momentum:'מומנטום',value:'תמחור',quality:'איכות',growth:'צמיחה',analysts:'אנליסטים',news:'חדשות',low_vol:'יציבות'};
-const VERD = {buy:'לקנות עכשיו',wait:'לחכות',avoid:'לא לקנות'};
-const VORD = {buy:3,wait:2,avoid:1};
-const RISK = ['', 'נמוך','נמוך-בינוני','בינוני','גבוה','גבוה מאוד'];
-const SECT = {'Technology':'טכנולוגיה','Financial Services':'פיננסים','Healthcare':'בריאות','Consumer Cyclical':'צריכה מחזורית',
-  'Consumer Defensive':'צריכה בסיסית','Communication Services':'תקשורת','Industrials':'תעשייה','Energy':'אנרגיה',
-  'Utilities':'תשתיות','Real Estate':'נדל"ן','Basic Materials':'חומרי גלם'};
-let D=null, st={p:'balanced',m:'all',sector:'',maxRisk:5,q:'',v:'',sort:'total',dir:-1};
-try{const s=JSON.parse(localStorage.getItem('sp_state')||'{}'); Object.assign(st,s)}catch(e){}
+const VERD={buy:'לקנות עכשיו',wait:'לחכות',avoid:'לא לקנות'}, VICON={buy:'🟢',wait:'🟡',avoid:'🔴'}, VORD={buy:3,wait:2,avoid:1};
+const RISKW=['','רגועה מאוד','רגועה','בינונית','קופצת חזק','קופצת חזק מאוד'];
+const RISKS=['','מניה יציבה. בדרך כלל זזה מעט.','מניה די יציבה.','תנודות רגילות: יש ימים של עליות וירידות של כמה אחוזים.','מניה שזזה הרבה. יכולה לרדת 30% ויותר בתקופה קשה.','מניה שזזה חזק מאוד. יכולה לרדת בחצי בתקופה קשה. מתאים רק לכסף שאפשר להרשות לעצמך להפסיד.'];
+const SECT={'Technology':'טכנולוגיה','Financial Services':'פיננסים','Healthcare':'בריאות','Consumer Cyclical':'צריכה','Consumer Defensive':'מוצרי יסוד',
+ 'Communication Services':'תקשורת ומדיה','Industrials':'תעשייה','Energy':'אנרגיה','Utilities':'חשמל ותשתיות','Real Estate':'נדל"ן','Basic Materials':'חומרי גלם'};
+let showAll=0, D=null, tab='buy', vf='', mf='', W={}, CMP=[], cache={};
+try{W=JSON.parse(localStorage.getItem('sp_watch')||'{}')}catch(e){}
+try{tab=localStorage.getItem('sp_tab')||'buy'}catch(e){}
 
 const $=s=>document.querySelector(s);
-const L=t=>'\u2066'+t+'\u2069';
+const L=t=>'⁦'+t+'⁩';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pct=(x,d=0)=>x==null||!isFinite(x)?'—':L((x>0?'+':'')+(x*100).toFixed(d)+'%');
 const cls=x=>x==null?'':x>=0?'pos':'neg';
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const num=(x,d=1)=>x==null||!isFinite(x)?'—':L(Number(x).toLocaleString('he-IL',{maximumFractionDigits:d}));
+const num=(x,d=2)=>x==null||!isFinite(x)?'—':L(Number(x).toLocaleString('he-IL',{maximumFractionDigits:d}));
+const cur=s=>s.currency==='ILA'?'אג׳':s.currency==='USD'?'$':(s.currency||'');
+const nm=s=>s.name_he||s.name;
+const byS=sym=>D.stocks.find(s=>s.symbol===sym);
+const repoLink=(p)=>{const m=location.hostname.match(/^([^.]+)\.github\.io$/);return m?`https://github.com/${m[1]}/${location.pathname.split('/')[1]||'stock-picker'}/${p}`:null};
+function saveW(){try{localStorage.setItem('sp_watch',JSON.stringify(W))}catch(e){}}
 
-function total(s,p){
-  const w=PROFILES[p].w; let n=0,d=0,cov=0;
-  for(const k in w){const v=s.scores[k]; if(v!=null){n+=v*w[k];d+=w[k]}}
-  cov=d; if(d<.6) return {v:null,cov};
-  return {v:Math.round(n/d),cov};
+/* ---------- home ---------- */
+function renderMarket(){
+  const M=D.market, t={positive:'רגוע וחיובי',neutral:'מעורב',negative:'זהירות'}[M.state];
+  const adv={positive:'רוב המניות עולות. זו סביבה נוחה, אבל עדיין לא כדאי לשים את כל הכסף בבת אחת.',
+    neutral:'אין כיוון ברור. עדיף לבחור חברות חזקות ולקנות בהדרגה.',
+    negative:'הבורסה בירידה ויש פחד בשוק. אם קונים, עדיף בכמה פעמים קטנות ולהעדיף מניות רגועות.'}[M.state];
+  const k=(a,b)=>`<li>${a}: <b>${b}</b></li>`;
+  $('#market').innerHTML=`<div class="light"><span class="dotbig d-${M.state}"></span><div><h2 style="margin:0">הבורסה עכשיו: ${t}</h2><div>${adv}</div>
+   <details style="margin-top:8px"><summary>למה?</summary><ul class="plain small">${M.notes.map(n=>`<li>${esc(n)}</li>`).join('')}
+   ${M.spy?k('מדד המניות הגדולות בארה"ב (S&P 500) בחודש האחרון',pct(M.spy.ret_1m,1)):''}${M.ta125?k('מדד תל אביב 125 בחודש האחרון',pct(M.ta125.ret_1m,1)):''}
+   ${M.vix!=null?k('"מדד הפחד" (VIX, מעל 25 = פחד, מתחת ל-16 = רוגע)',num(M.vix,1)):''}${M.usdils?k('דולר',num(M.usdils,3)+' ₪'):''}</ul>
+   ${(D.market_news||[]).length?`<h3>כותרות מהבורסה</h3><div class="news"><ul>${D.market_news.slice(0,6).map(n=>`<li><a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a> <span class="muted tiny">${esc(n.source)}</span></li>`).join('')}</ul></div><p class="muted tiny">הכותרות באנגלית, מהמקור.</p>`:''}
+   </details></div></div>`;
 }
-function spark(arr){
-  if(!arr||arr.length<2)return'';
-  const w=110,h=28,mn=Math.min(...arr),mx=Math.max(...arr),r=mx-mn||1;
-  const pts=arr.map((v,i)=>`${(i*(w/(arr.length-1))).toFixed(1)},${(h-2-(v-mn)/r*(h-4)).toFixed(1)}`).join(' ');
-  const up=arr[arr.length-1]>=arr[0];
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline fill="none" stroke="var(${up?'--pos':'--neg'})" stroke-width="1.6" points="${pts}"/></svg>`;
+function row(s,extra=''){
+  const c=s.consult;
+  return `<div class="row" onclick="openStock('${esc(s.symbol)}')"><div class="nm"><b>${esc(nm(s))}</b><span>${esc(s.symbol)} · ${esc(SECT[s.sector]||'')} · ${num(s.price)} ${cur(s)}</span>${extra?`<div style="font-size:13px;color:var(--muted)">${extra}</div>`:''}</div>
+   <div class="side"><span class="vd v-${c.verdict}">${VERD[c.verdict]}</span><div style="margin-top:3px">${RISKW[s.risk.level]}</div></div></div>`;
 }
-let W={},CMP=[];
-try{W=JSON.parse(localStorage.getItem('sp_watch')||'{}')}catch(e){}
-function saveW(){try{localStorage.setItem('sp_watch',JSON.stringify(W))}catch(e){};renderWatch()}
-function toggleWatch(sym){if(W[sym])delete W[sym];else{const s=D.stocks.find(x=>x.symbol===sym);W[sym]={target:null,seen:s&&s.consult&&s.consult.verdict,added:Date.now()}};saveW()}
-function toggleCmp(sym){const i=CMP.indexOf(sym);if(i>=0)CMP.splice(i,1);else{if(CMP.length>=3)CMP.shift();CMP.push(sym)};renderTbar()}
-function renderTbar(){
-  const b=$('#tbar');b.classList.toggle('on',CMP.length>0);
-  b.innerHTML=`<span>השוואה: ${CMP.map(x=>esc(nameOf(x))).join(' · ')}</span>${CMP.length>=2?'<button style="background:var(--accent);color:#fff" onclick="openCompare()">השווה</button>':'<span style="opacity:.7">בחר עוד מניה</span>'}<button style="background:transparent;color:inherit" onclick="CMP=[];renderTbar()" aria-label="ניקוי">✕</button>`;
-}
-function nameOf(sym){const s=D.stocks.find(x=>x.symbol===sym);return s?(s.name_he||s.name):sym}
-function exitHTML(s){
-  const e=s.consult&&s.consult.exit; if(!e||!e.target) return '';
-  const head=s.consult.verdict==='buy'?'תוכנית יציאה':'אם קונים בהמשך, תוכנית יציאה לפי המחיר היום';
-  return `<div style="margin-top:12px"><b>${head}</b>
-   <div class="exitbox"><div>מחיר יעד<b class="pos">${num(e.target,2)}</b>${pct(e.target_pct,1)}</div>
-   <div>סטופ-לוס<b class="neg">${num(e.stop,2)}</b>${pct(e.stop_pct,1)}</div>
-   <div>סיכוי מול סיכון<b>${L('1:'+e.rr)}</b>על כל 1 בסיכון</div></div>
-   <div class="small muted" style="margin-top:6px">יעד: ${esc(e.basis_target)}. סטופ: ${esc(e.basis_stop)}. סטופ-לוס = המחיר שבו מוכרים כדי להגביל הפסד אם הניתוח טעה.</div></div>`;
-}
-function watchAlerts(sym){
-  const s=D.stocks.find(x=>x.symbol===sym), w=W[sym], out=[]; if(!s) return out;
-  const v=s.consult&&s.consult.verdict;
+function alertsFor(sym){
+  const s=byS(sym), w=W[sym]||{}, out=[]; if(!s) return out;
+  const v=s.consult.verdict;
   if(v==='buy'&&w.seen&&w.seen!=='buy') out.push('עברה ל"לקנות עכשיו"');
-  else if(w.seen&&v&&w.seen!==v) out.push('ההמלצה השתנתה');
-  if(w.target&&s.price<=w.target) out.push('הגיעה למחיר היעד שלך');
-  const srv=(D.watchlist||[]).find(x=>x.symbol===sym); if(srv) (srv.alerts||[]).forEach(a=>{if(!out.includes(a))out.push(a)});
+  else if(w.seen&&w.seen!==v) out.push('ההמלצה השתנתה');
+  if(w.target&&s.price<=w.target) out.push('הגיעה למחיר שרצית');
+  const srv=(D.watchlist||[]).find(x=>x.symbol===sym); if(srv)(srv.alerts||[]).forEach(a=>{if(!out.includes(a))out.push(a)});
   return out;
 }
-function renderWatch(){
-  const syms=Object.keys(W).filter(x=>D.stocks.some(s=>s.symbol===x));
-  const srv=(D.watchlist||[]).filter(w=>w.found&&!W[w.symbol]);
-  const m=location.hostname.match(/^([^.]+)\.github\.io$/), repo=location.pathname.split('/')[1]||'stock-picker';
-  const wf=m?`https://github.com/${m[1]}/${repo}/actions/workflows/watch.yml`:null;
-  const row=(sym,target,srvOnly)=>{const s=D.stocks.find(x=>x.symbol===sym),v=s.consult.verdict,al=srvOnly?(D.watchlist.find(x=>x.symbol===sym).alerts||[]):watchAlerts(sym);
-    const onSrv=(D.watchlist||[]).some(x=>x.symbol===sym);
-    return `<li><span class="nm" onclick="openStock('${esc(sym)}')"><b>${esc(s.name_he||s.name)}</b> <span class="muted small">${esc(sym)} · ${num(s.price,2)}${onSrv?' · 🔔':''}</span></span>
-     <span class="vd v-${v}">${VERD[v]}</span>${al.map(a=>`<span class="alert">🔔 ${esc(a)}</span>`).join('')}
-     ${srvOnly?'':`<input type="number" step="any" placeholder="מחיר יעד" value="${target??''}" onchange="W['${esc(sym)}'].target=this.value?+this.value:null;saveW()" aria-label="מחיר יעד לקנייה"><button class="btn2" style="padding:2px 8px" onclick="toggleWatch('${esc(sym)}')" aria-label="הסרה">✕</button>`}</li>`};
-  $('#watch').innerHTML=`<h2>★ רשימת המעקב שלי</h2>
-   ${syms.length||srv.length?`<ul>${syms.map(x=>row(x,W[x].target,false)).join('')}${srv.map(w=>row(w.symbol,w.target,true)).join('')}</ul>`:'<p class="muted small">עוד אין מניות במעקב. פתח מניה ולחץ "☆ הוסף למעקב". אפשר לקבוע מחיר יעד, ותופיע כאן התראה כשהמניה עוברת ל"לקנות עכשיו" או יורדת למחיר שקבעת.</p>'}
-   <p class="muted small" style="margin:8px 0 0">הרשימה כאן שמורה רק בדפדפן הזה. ${wf?`<a href="${wf}" target="_blank" rel="noopener">כדי לקבל התראה לטלפון ולמייל בסיכום הבוקר</a>, הוסף את המניה גם שם (Run workflow).`:'להתראות לטלפון ולמייל: לשונית Actions במאגר, "Watchlist".'} מניות עם 🔔 כבר מקבלות התראות.</p>`;
+function renderTabs(){
+  const nb=D.stocks.filter(s=>s.consult.verdict==='buy').length, nw=Object.keys(W).length, nc=(D.changes||[]).length;
+  const T=[['buy',`🟢 שווה לקנות עכשיו <span class="n">${nb}</span>`],['watch',`★ המעקב שלי <span class="n">${nw}</span>`],['changes',`🔁 מה השתנה <span class="n">${nc}</span>`],['all',`📋 כל המניות <span class="n">${D.stocks.length}</span>`]];
+  $('#tabs').innerHTML=T.map(([k,t])=>`<button class="tab ${tab===k?'on':''}" role="tab" onclick="setTab('${k}')">${t}</button>`).join('');
 }
-function renderChanges(){
-  const ch=D.changes||[], ord={buy:0,wait:1,avoid:2};
-  $('#changes').innerHTML=`<h2>מה השתנה מאתמול</h2>`+(ch.length?`<ul>${[...ch].sort((a,b)=>ord[a.to]-ord[b.to]).map(c=>`<li><span class="nm" onclick="openStock('${esc(c.symbol)}')"><b>${esc(c.name)}</b> <span class="muted small">${esc(c.symbol)}</span></span><span class="vd v-${c.from}" style="opacity:.6">${VERD[c.from]}</span><span class="muted">←</span><span class="vd v-${c.to}">${VERD[c.to]}</span></li>`).join('')}</ul>`
-    :`<p class="muted small">${(D.track&&D.track.live&&D.track.live.since)?'אין שינויים בהמלצות מאז הריצה הקודמת.':'השינויים יופיעו כאן החל מהריצה השנייה של הכלי.'}</p>`)+
-    `<p class="muted small" style="margin:8px 0 0">כל בוקר נשלח סיכום של השינויים וההתראות בהודעה מ-GitHub (למייל ולאפליקציית GitHub).</p>`;
+function setTab(k){tab=k;try{localStorage.setItem('sp_tab',k)}catch(e){};renderTabs();renderPanel()}
+function renderPanel(){
+  const P=$('#panel');
+  if(tab==='buy'){
+    const b=D.stocks.filter(s=>s.consult.verdict==='buy').sort((a,b)=>b.consult.score-a.consult.score);
+    P.innerHTML=`<h2>שווה לקנות עכשיו</h2><p class="muted small" style="margin-top:-4px">מניות שעברו את רוב הבדיקות: החברה במצב טוב, המחיר בעלייה, ואין סיבה לחכות. מסודר מהחזקה ביותר.</p>
+     <div class="list">${b.slice(0,showAll?999:8).map(s=>row(s,`<span>יעד רווח <span class="pos">${pct(s.consult.exit.target_pct)}</span> · עצירת הפסד <span class="neg">${pct(s.consult.exit.stop_pct)}</span></span>`)).join('')||'<div class="empty">היום אין מניות שעברו את כל הבדיקות. זה קורה כשהבורסה חלשה, ואז עדיף לחכות.</div>'}</div>
+     ${b.length>8&&!showAll?`<button class="btn2 more" onclick="showAll=1;renderPanel()">הצג את כל ${b.length}</button>`:''}`;
+  } else if(tab==='watch'){
+    const syms=Object.keys(W).filter(byS);
+    const wf=repoLink('actions/workflows/watch.yml');
+    P.innerHTML=`<h2>★ המעקב שלי</h2>${syms.length?`<div class="list">${syms.map(x=>row(byS(x),alertsFor(x).map(a=>`<div class="alert">🔔 ${esc(a)}</div>`).join('')+(W[x].target?`<span> · מחיר שרצית: ${num(W[x].target)}</span>`:''))).join('')}</div>`
+     :'<div class="empty">עוד אין מניות במעקב. פתח מניה ולחץ על "☆ לעקוב". כאן תראה התראה כשהיא הופכת ל"לקנות עכשיו" או מגיעה למחיר שרצית.</div>'}
+     <p class="muted tiny">הרשימה הזו שמורה רק בטלפון או במחשב הזה.${wf?` כדי לקבל התראה במייל ובאפליקציית GitHub, <a href="${wf}" target="_blank" rel="noopener">הוסף את המניה כאן</a> (Run workflow, ואז מקלידים את הסימול).`:''}</p>`;
+  } else if(tab==='changes'){
+    const ch=D.changes||[];
+    P.innerHTML=`<h2>מה השתנה מאתמול</h2>${ch.length?`<div class="list">${[...ch].sort((a,b)=>VORD[b.to]-VORD[a.to]).map(c=>{const s=byS(c.symbol);return s?row(s,`<span>היה: ${VERD[c.from]}</span>`):''}).join('')}</div>`
+     :`<div class="empty">אין שינויים בהמלצות מאז הבדיקה הקודמת.</div>`}<p class="muted tiny">הבדיקה רצה כל לילה אחרי סגירת הבורסה בארה"ב. כל בוקר נשלח סיכום במייל ובאפליקציית GitHub.</p>`;
+  } else {
+    const q=($('#aq')&&$('#aq').value||'').trim().toLowerCase();
+    let r=D.stocks.filter(s=>(!vf||s.consult.verdict===vf)&&(!mf||s.market===mf)&&(!q||(s.symbol+' '+s.name+' '+s.name_he).toLowerCase().includes(q)));
+    r.sort((a,b)=>(VORD[b.consult.verdict]*1000+b.consult.score)-(VORD[a.consult.verdict]*1000+a.consult.score));
+    const ch=(k,v,t)=>`<button class="chip ${(k==='v'?vf:mf)===v?'on':''}" onclick="${k==='v'?'vf':'mf'}='${v}';renderPanel()">${t}</button>`;
+    P.innerHTML=`<h2>כל המניות</h2><div class="filters">${ch('v','','הכל')}${ch('v','buy','🟢 לקנות')}${ch('v','wait','🟡 לחכות')}${ch('v','avoid','🔴 לא לקנות')}</div>
+     <div class="filters">${ch('m','','כל הבורסות')}${ch('m','US','🇺🇸 ארה"ב')}${ch('m','TA','🇮🇱 תל אביב')}</div>
+     <div class="list">${r.map(s=>row(s,`<span>בשנה: <span class="${cls(s.metrics.ret_1y)}">${pct(s.metrics.ret_1y)}</span></span>`)).join('')||'<div class="empty">אין מניות שמתאימות לסינון</div>'}</div>`;
+  }
 }
 function renderTrack(){
   const T=D.track; if(!T){$('#track').style.display='none';return}
-  const f=(x,d=1)=>x==null?'—':L((x>0?'+':'')+(x*100).toFixed(d)+'%'), r=x=>x==null?'—':L(Math.round(x*100)+'%');
-  const dt=x=>x?new Date(x).toLocaleDateString('he-IL'):'—';
-  const lv=T.live||{}, b=lv.buy||{}, sm=T.sim||{}, sb=sm.buy||{}, sa=sm.all||{}, sv=sm.avoid||{};
-  const live=b.n_r1m?`<div class="stat"><div>המלצות קנייה שנבדקו<b>${b.n_r1m}</b>מתוך ${b.n} מאז ${dt(lv.since)}</div>
-     <div>עלו אחרי חודש<b>${r(b.win1m)}</b>ממוצע ${f(b.r1m)}</div><div>אחרי 3 חודשים<b>${f(b.r3m)}</b>${b.n_r3m} המלצות, ${r(b.win3m)} עלו</div>
-     <div>הגיעו ליעד לפני הסטופ<b>${r(b.target_first)}</b>מתוך ${b.n_hits} שהגיעו לאחד מהם</div></div>`
-    :`<p class="small">${b.n?`נרשמו ${b.n} המלצות קנייה מאז ${dt(lv.since)}. התוצאות יופיעו כאן אחרי שיעבור עליהן חודש.`:'הכלי מתחיל עכשיו לרשום כל המלצה. כעבור חודש יופיעו כאן התוצאות האמיתיות.'}</p>`;
-  $('#track').innerHTML=`<h2>האם ההמלצות עובדות?</h2>
-   <h3 style="font-size:15px;margin:10px 0 0">1. המלצות אמיתיות של הכלי</h3>${live}
-   <h3 style="font-size:15px;margin:14px 0 0">2. בדיקה לאחור (${dt(sm.from)} עד ${dt(sm.to)})</h3>
-   <p class="small muted" style="margin:4px 0">הרצנו את חלק המגמה והתזמון של הבדיקה על מחירי העבר של כל המניות, כל שבועיים. מה קרה אחרי 3 חודשים:</p>
-   <div class="tablewrap"><table class="cmp"><thead><tr><th></th><th>מספר מקרים</th><th>תשואה ממוצעת</th><th>עלו</th><th>מול המדד</th></tr></thead><tbody>
-    <tr><th>מגמה ותזמון חיוביים ("לקנות")</th><td>${sb.n_r3m??'—'}</td><td class="${cls(sb.r3m)}">${f(sb.r3m)}</td><td>${r(sb.win3m)}</td><td class="${cls(sb.x3m)}">${f(sb.x3m)}</td></tr>
-    <tr><th>כל המניות בכל הזמנים</th><td>${sa.n_r3m??'—'}</td><td class="${cls(sa.r3m)}">${f(sa.r3m)}</td><td>${r(sa.win3m)}</td><td class="${cls(sa.x3m)}">${f(sa.x3m)}</td></tr>
-    <tr><th>מגמה יורדת ("לא לקנות")</th><td>${sv.n_r3m??'—'}</td><td class="${cls(sv.r3m)}">${f(sv.r3m)}</td><td>${r(sv.win3m)}</td><td class="${cls(sv.x3m)}">${f(sv.x3m)}</td></tr>
-   </tbody></table></div>
-   <p class="small muted">בקניות לפי האות, היעד הושג לפני הסטופ ב-${r(sb.target_first)} מהמקרים. הבדיקה לאחור לא כוללת את הנתונים הפיננסיים (אין היסטוריה מהימנה שלהם), ובמבחן כזה יש הטיה: המניות ברשימה הן חברות שהצליחו עד היום. ביצועי עבר לא מבטיחים כלום.</p>`;
-}
-function openCompare(){
-  const S=CMP.map(x=>D.stocks.find(s=>s.symbol===x)).filter(Boolean); if(S.length<2) return;
-  const ic={good:'✓',ok:'!',bad:'✕',na:'?'}, cur=s=>s.currency==='ILA'?'אג׳':s.currency==='USD'?'$':s.currency;
-  const row=(t,fn)=>`<tr><th>${t}</th>${S.map(s=>`<td>${fn(s)}</td>`).join('')}</tr>`;
-  const keys=S[0].consult.checks.map(c=>c.key);
-  const best=[...S].sort((a,b)=>(VORD[b.consult.verdict]*1000+b.consult.score)-(VORD[a.consult.verdict]*1000+a.consult.score))[0];
-  $('#dr').innerHTML=`<button class="x" aria-label="סגירה" onclick="closeDr()">×</button><h2 style="font-size:22px;margin:0 0 4px">השוואת מניות</h2>
-   <p class="small">לפי הבדיקה, <b>${esc(best.name_he||best.name)}</b> במצב הטוב ביותר מבין ${S.length} המניות (${VERD[best.consult.verdict]}, ציון ${L(best.consult.score)}).</p>
-   <div class="tablewrap"><table class="cmp"><thead><tr><th></th>${S.map(s=>`<th><a href="#" onclick="openStock('${esc(s.symbol)}');return false" style="color:inherit">${esc(s.name_he||s.name)}</a><div class="muted small">${esc(s.symbol)}</div></th>`).join('')}</tr></thead><tbody>
-    ${row('המלצה',s=>`<span class="vd v-${s.consult.verdict}">${VERD[s.consult.verdict]}</span>`)}
-    ${row('ציון כולל',s=>L(s.consult.score))}
-    ${row('מחיר',s=>num(s.price,2)+' '+cur(s))}
-    ${row('יעד / סטופ',s=>s.consult.exit&&s.consult.exit.target?`<span class="pos">${num(s.consult.exit.target,2)}</span> / <span class="neg">${num(s.consult.exit.stop,2)}</span>`:'—')}
-    ${row('סיכון',s=>`<span class="risk r${s.risk.level}">${s.risk.level}</span>`)}
-    ${row('חודש / שנה',s=>`<span class="${cls(s.metrics.ret_1m)}">${pct(s.metrics.ret_1m)}</span> / <span class="${cls(s.metrics.ret_1y)}">${pct(s.metrics.ret_1y)}</span>`)}
-    ${row('מכפיל עתידי',s=>num(s.fund.forwardPE))}
-    ${row('צמיחת הכנסות',s=>pct(s.fund.revenueGrowth))}
-    ${row('שולי רווח',s=>pct(s.fund.profitMargins))}
-    ${keys.map(k=>row(esc(S[0].consult.checks.find(c=>c.key===k).group==='x'?'':({trend:'מגמה',timing:'נקודת כניסה',earn_date:'דוח קרוב',earn_last:'דוח אחרון',value:'תמחור',quality:'רווחיות',balance:'מאזן',growth:'צמיחה',analysts:'אנליסטים',news:'חדשות',risk:'סיכון',market:'שוק'}[k]||k)),s=>{const c=s.consult.checks.find(c=>c.key===k);return c?`<span class="ic ${c.status}" style="display:inline-grid;width:18px;height:18px;border-radius:50%;place-items:center;color:#fff;font-size:11px;margin-inline-end:4px">${ic[c.status]}</span>${esc(c.title)}`:'—'})).join('')}
-   </tbody></table></div><p class="muted small">לא ייעוץ השקעות.</p>`;
-  $('#dr').classList.add('on','wide');$('#ov').classList.add('on');$('#dr').scrollTop=0;$('#dr').dataset.sym='';
-}
-function save(){try{localStorage.setItem('sp_state',JSON.stringify({p:st.p,m:st.m,maxRisk:st.maxRisk}))}catch(e){}}
-
-function renderMarket(){
-  const M=D.market, lab={positive:'חיובית',neutral:'ניטרלית / מעורבת',negative:'זהירה'}[M.state];
-  const adv={positive:'סביבה תומכת. עדיין חשוב לפזר ולא להיכנס בבת אחת.',
-    neutral:'אותות מעורבים. כדאי להעדיף מניות איכותיות ולהיכנס בהדרגה.',
-    negative:'סביבה מאתגרת. כדאי להעדיף סיכון נמוך, להחזיק יותר מזומן או להשקיע בהדרגה.'}[M.state];
-  const k=(t,v,sub)=>`<div class="kpi"><span>${t}</span><b>${v}</b>${sub?`<span class="${cls(sub.v)}">${sub.t}</span>`:''}</div>`;
-  $('#market').innerHTML=`<h2>מצב השוק עכשיו: <span class="badge st-${M.state}">${lab}</span></h2>
-  <div class="small">${adv}</div><ul class="notes small">${M.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul>
-  <div class="kpis">
-   ${M.spy?k('S&P 500 (SPY) חודש',pct(M.spy.ret_1m,1),{v:M.spy.ret_3m,t:'3 ח׳ '+pct(M.spy.ret_3m,1)}):''}
-   ${M.ta125?k('ת"א 125 חודש',pct(M.ta125.ret_1m,1),{v:M.ta125.ret_3m,t:'3 ח׳ '+pct(M.ta125.ret_3m,1)}):''}
-   ${M.qqq?k('נאסד"ק 100 חודש',pct(M.qqq.ret_1m,1),{v:M.qqq.ret_3m,t:'3 ח׳ '+pct(M.qqq.ret_3m,1)}):''}
-   ${k('מדד הפחד VIX',num(M.vix))}
-   ${k('אג"ח ארה"ב 10 שנים',M.tnx!=null?L(num(M.tnx,2)+'%'):'—')}
-   ${k('דולר/שקל',num(M.usdils,3))}
-   ${k('נפט (חבית)',L('$'+num(M.oil)))}
-   ${k('זהב (אונקיה)',L('$'+num(M.gold,0)))}
-  </div>`;
-  $('#mnews ul').innerHTML=(D.market_news||[]).map(n=>`<li><span class="dot ${n.sentiment>0?'p':n.sentiment<0?'n':''}"></span><a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)} <span class="muted small">· ${esc(n.source)}</span></a></li>`).join('')||'<li class="muted">אין כותרות</li>';
+  const b=(T.live||{}).buy||{}, sm=T.sim||{}, sb=sm.buy||{}, sa=sm.all||{};
+  const r=x=>x==null?'—':L(Math.round(x*100)+'%');
+  const live=b.n_r1m?`<div class="stat"><div>מתוך ${b.n_r1m} המלצות קנייה מלפני חודש ויותר<b>${r(b.win1m)} עלו</b></div><div>שינוי ממוצע אחרי חודש<b class="${cls(b.r1m)}">${pct(b.r1m,1)}</b></div></div>`
+   :`<p class="small">הכלי רושם כל המלצה. בעוד חודש יופיע כאן כמה מההמלצות באמת עלו.</p>`;
+  const better=sb.r3m!=null&&sa.r3m!=null&&sb.r3m>sa.r3m;
+  $('#track').innerHTML=`<h2>האם הכלי צודק?</h2>${live}
+   <details><summary>בדיקה על העבר</summary><p class="small">בדקנו על מחירי 3 השנים האחרונות: מה היה קורה אם קונים כל פעם שהמחיר נראה טוב (חלק המחיר והתזמון בלבד).</p>
+   <ul class="plain small"><li>כשהבדיקה אמרה "לקנות", אחרי 3 חודשים המניה עלתה ב-<b>${r(sb.win3m)}</b> מהמקרים, בממוצע <b>${pct(sb.r3m,1)}</b>.</li>
+   <li>לשם השוואה, כל המניות בכל הזמנים: עלו ב-${r(sa.win3m)} מהמקרים, בממוצע ${pct(sa.r3m,1)}.</li>
+   <li>כשקונים לפי התוכנית, המחיר הגיע ליעד הרווח לפני נקודת עצירת ההפסד ב-${r(sb.target_first)} מהמקרים.</li></ul>
+   <p class="small"><b>${better?'בתקופה הזו הבדיקה עזרה מעט.':'בתקופה הזו בדיקת המחיר לבדה לא עזרה יותר מקנייה אקראית.'}</b> לכן ההמלצה בודקת גם את מצב החברה עצמה. מה שקרה בעבר לא מבטיח את העתיד.</p></details>`;
 }
 
-function rows(){
-  const q=st.q.trim().toLowerCase();
-  let r=D.stocks.map(s=>{const t=total(s,st.p);return {...s,total:t.v,cov:t.cov}})
-   .filter(s=>(st.m==='all'||s.market===st.m)&&(!st.sector||s.sector===st.sector)&&s.risk.level<=st.maxRisk)
-   .filter(s=>!st.v||(s.consult&&s.consult.verdict===st.v))
-   .filter(s=>!q||(s.symbol+' '+s.name+' '+s.name_he).toLowerCase().includes(q));
-  const byTotal=[...r].sort((a,b)=>(b.total??-1)-(a.total??-1)); byTotal.forEach((s,i)=>s.rank=i+1);
-  const key={rank:s=>s.rank,name:s=>s.name_he||s.name,total:s=>s.total??-1,risk:s=>s.risk.score,v:s=>s.consult?VORD[s.consult.verdict]*1000+s.consult.score:0,r6:s=>s.metrics.ret_6m??-9,r1y:s=>s.metrics.ret_1y??-9,up:s=>s.upside??-9}[st.sort];
-  r.sort((a,b)=>{const x=key(a),y=key(b);return (x>y?1:x<y?-1:0)*st.dir});
-  return r;
-}
-function renderTable(){
-  const r=rows();
-  $('#pnote').textContent=PROFILES[st.p].note;
-  $('#tb').innerHTML=r.length?r.map(s=>`<tr class="row" data-s="${esc(s.symbol)}">
-    <td class="muted">${s.rank}</td>
-    <td class="nm"><b>${esc(s.name_he||s.name)}</b><span>${esc(s.symbol)} · ${esc(SECT[s.sector]||s.sector||'')}</span></td>
-    <td><div class="score">${s.total==null?'<span class="muted small">נתונים חסרים</span>':`<b>${s.total}</b><div class="bar"><i style="width:${s.total}%"></i></div>`}</div></td>
-    <td>${s.consult?`<span class="vd v-${s.consult.verdict}">${VERD[s.consult.verdict]}</span>`:'—'}</td>
-    <td><span class="risk r${s.risk.level}">${s.risk.level} · ${RISK[s.risk.level]}</span></td>
-    <td class="hide-sm ${cls(s.metrics.ret_6m)}">${pct(s.metrics.ret_6m)}</td>
-    <td class="hide-sm ${cls(s.metrics.ret_1y)}">${pct(s.metrics.ret_1y)}</td>
-    <td class="hide-sm ${cls(s.upside)}">${pct(s.upside)}</td>
-    <td class="hide-sm">${spark(s.spark)}</td></tr>`).join(''):'<tr><td colspan="9" class="empty">אין מניות שעונות על הסינון</td></tr>';
-  document.querySelectorAll('tr.row').forEach(tr=>tr.onclick=()=>openStock(tr.dataset.s));
-}
-function openStock(sym){
-  const s=D.stocks.find(x=>x.symbol===sym); if(!s)return;
-  const t=total(s,st.p), f=s.fund, m=s.metrics, cur=s.currency==='ILA'?'אג׳':s.currency==='USD'?'$':s.currency;
-  const fac=Object.keys(FAC).map(k=>{const v=s.scores[k];return `<div class="fac"><span>${FAC[k]}</span><div class="bar"><i style="width:${v??0}%;${v==null?'':''}"></i></div><b>${v==null?'—':Math.round(v)}</b></div>`}).join('');
-  const mt=(a,b)=>`<div><span class="muted">${a}</span><b>${b}</b></div>`;
-  $('#dr').innerHTML=`<button class="x" aria-label="סגירה" onclick="closeDr()">×</button>
-   <h2 style="font-size:22px;margin:0">${esc(s.name_he||s.name)}</h2>
-   <div class="acts"><button class="btn2 ${W[sym]?'on':''}" onclick="toggleWatch('${esc(sym)}');openStock('${esc(sym)}')">${W[sym]?'★ ברשימת המעקב':'☆ הוסף למעקב'}</button>
-     <button class="btn2 ${CMP.includes(sym)?'on':''}" onclick="toggleCmp('${esc(sym)}');openStock('${esc(sym)}')">${CMP.includes(sym)?'✓ בהשוואה':'⇄ הוסף להשוואה'}</button></div>
-   <div class="muted small">${esc(s.symbol)} · ${esc(s.name)} · ${esc(SECT[s.sector]||s.sector)} · מחיר ${num(s.price,2)} ${cur}</div>
-   <div style="display:flex;gap:10px;align-items:center;margin:14px 0">
-     <div class="kpi" style="flex:1"><span>ציון יחסי (${PROFILES[st.p].label})</span><b style="font-size:26px">${t.v??'—'}</b></div>
-     <div class="kpi" style="flex:1"><span>רמת סיכון</span><b><span class="risk r${s.risk.level}">${s.risk.level} · ${RISK[s.risk.level]}</span></b></div>
-   </div>
-   ${consultHTML(s)}
-   <h2>מרכיבי הציון (יחסית לשאר המניות)</h2>${fac}
-   <div class="pc"><div><b class="pos">חוזקות</b><ul>${s.pros.map(x=>`<li>${esc(x)}</li>`).join('')||'<li class="muted">אין בולטות</li>'}</ul></div>
-   <div><b class="neg">חולשות</b><ul>${s.cons.map(x=>`<li>${esc(x)}</li>`).join('')||'<li class="muted">אין בולטות</li>'}</ul></div></div>
-   <h2>למה רמת הסיכון ${s.risk.level}?</h2><ul class="notes small">${s.risk.why.map(x=>`<li>${esc(x)}</li>`).join('')}
-     <li>ביום רע (1 מתוך 20 ימים) המניה ירדה בשנה האחרונה ${L((m.var95*100).toFixed(1)+'%')} או יותר</li></ul>
-   <h2 style="margin-top:16px">נתונים</h2>
-   <div class="mt">
-     ${mt('חודש',`<span class="${cls(m.ret_1m)}">${pct(m.ret_1m,1)}</span>`)}${mt('3 חודשים',`<span class="${cls(m.ret_3m)}">${pct(m.ret_3m,1)}</span>`)}${mt('שנה',`<span class="${cls(m.ret_1y)}">${pct(m.ret_1y,1)}</span>`)}
-     ${mt('מכפיל רווח',num(f.trailingPE))}${mt('מכפיל עתידי',num(f.forwardPE))}${mt('מכפיל הון',num(f.priceToBook))}
-     ${mt('שולי רווח',pct(f.profitMargins))}${mt('תשואה על ההון',pct(f.returnOnEquity))}${mt('חוב/הון',f.debtToEquity!=null?L(num(f.debtToEquity,0)+'%'):'—')}
-     ${mt('צמיחת הכנסות',pct(f.revenueGrowth))}${mt('צמיחת רווח',pct(f.earningsGrowth))}${mt('דיבידנד',f.dividendYield!=null?L(num(f.dividendYield,2)+'%'):'—')}
-     ${mt('מרחק משיא שנתי',pct(m.from_high))}${mt('בטא',num(m.beta,2))}${mt('אנליסטים',f.numberOfAnalystOpinions?num(f.numberOfAnalystOpinions,0)+' · יעד '+num(f.targetMeanPrice,2):'—')}
-   </div>
-   <h2 style="margin-top:16px">חדשות אחרונות</h2>
-   <div class="news"><ul style="max-height:none">${s.news.map(n=>`<li><span class="dot ${n.sentiment>0?'p':n.sentiment<0?'n':''}"></span><a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)} <span class="muted small">· ${esc(n.source)}${n.date?' · '+new Date(n.date).toLocaleDateString('he-IL'):''}</span></a></li>`).join('')||'<li class="muted">לא נמצאו כותרות בשבועיים האחרונים</li>'}</ul></div>
-   <p class="muted small">נקודה ירוקה/אדומה = כותרת שנראית חיובית/שלילית לפי ניתוח מילים אוטומטי.</p>`;
-  $('#dr').classList.remove('wide');
-  if(W[sym]){W[sym].seen=s.consult&&s.consult.verdict;saveW()}
-  const keep=$('#dr').dataset.sym===sym?$('#dr').scrollTop:0; $('#dr').dataset.sym=sym;
-  $('#dr').classList.add('on');$('#ov').classList.add('on');$('#dr').scrollTop=keep;
-  try{history.replaceState(null,'','#'+encodeURIComponent(sym))}catch(e){}
-}
-function closeDr(){$('#dr').classList.remove('on');$('#ov').classList.remove('on');try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
-
-function consultHTML(s){
-  const c=s.consult; if(!c) return '';
-  const icon={good:'✓',ok:'!',bad:'✕',na:'?'};
-  const fit=s.risk.level>PROFILES[st.p].maxRisk?`<li>רמת הסיכון (${s.risk.level}) גבוהה מהמתאים לפרופיל ה${PROFILES[st.p].label} שבחרת.</li>`:'';
-  const waits=c.waits&&c.waits.length?`<div style="margin-top:10px"><b>${c.verdict==='avoid'?'מה צריך לקרות כדי לשקול מחדש':c.verdict==='wait'?'למה לחכות':'שים לב'}</b><ul>${c.waits.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></div>`:'';
-  const groups={};
-  c.checks.forEach(k=>{(groups[k.group]=groups[k.group]||[]).push(k)});
-  const order=['tech','event','fund','sent','risk'];
-  const list=order.filter(g=>groups[g]).map(g=>`<div class="grp">${esc(c.groups[g])}</div>`+groups[g].map(k=>`<div class="ck"><span class="ic ${k.status}">${icon[k.status]}</span><div><b>${esc(k.title)}</b><span>${esc(k.text)}</span></div></div>`).join('')).join('');
-  return `<div class="hero v-${c.verdict}">
-     <div class="muted small">ההמלצה של הכלי</div>
-     <div class="big">${VERD[c.verdict]}</div>
-     <p>${esc(c.summary)}</p>
-     <div style="margin-top:8px">${c.reasons.map(r=>`<div class="ck" style="border:0;padding:4px 0"><span class="ic ${r.status}">${icon[r.status]}</span><div><b>${esc(r.title)}</b><span>${esc(r.text)}</span></div></div>`).join('')}</div>${fit?`<ul>${fit}</ul>`:''}
-     ${c.cautions&&c.cautions.length?`<div class="small" style="margin-top:8px"><b>${c.verdict==='avoid'?'מה כן טוב':'נקודות לתשומת לב'}:</b> ${c.cautions.map(esc).join(' · ')}</div>`:''}
-     ${exitHTML(s)}
-     ${waits}
-     <div class="tally"><span class="pos">✓ ${c.counts.good} חיוביות</span><span style="color:var(--warn)">! ${c.counts.ok} ניטרליות</span><span class="neg">✕ ${c.counts.bad} שליליות</span></div>
-     <div class="meta">ציון כולל ${L((c.score>0?'+':'')+c.score)} (מ-100- עד 100+) · ביטחון ${c.confidence} · נכון לנתוני ${new Date(D.generated_at).toLocaleDateString('he-IL')} · לא ייעוץ השקעות</div>
-   </div>
-   <h2>כל הבדיקות</h2>${list}
-   <div style="height:14px"></div>
-   ${s.about?`<details class="small" style="margin-bottom:14px"><summary style="cursor:pointer;font-weight:700">על החברה</summary><p class="muted" dir="auto">${esc(s.about)}</p></details>`:''}`;
-}
-
+/* ---------- search ---------- */
 function norm(t){return String(t||'').toLowerCase().replace(/["'׳״.\-\s]/g,'')}
-function findStock(q){
-  const n=norm(q.split('·').pop()); const n0=norm(q); if(!n0) return null;
-  const S=D.stocks;
-  return S.find(s=>norm(s.symbol)===n||norm(s.symbol.replace('.TA',''))===n)
-    || S.find(s=>norm(s.name_he)===n0||norm(s.name)===n0)
-    || S.find(s=>norm(s.name_he).includes(n0)||norm(s.name).includes(n0)||norm(s.symbol).startsWith(n0));
+function matches(q){
+  const n=norm(q); if(!n) return [];
+  return D.stocks.map(s=>{const a=norm(s.symbol),b=norm(s.name_he),c=norm(s.name);let sc=0;
+    if(a===n||a.replace(/ta$/,'')===n)sc=100;else if(b===n)sc=90;else if(b.startsWith(n)||a.startsWith(n))sc=70;else if(c.startsWith(n))sc=60;else if(b.includes(n)||c.includes(n))sc=40;return [sc,s]})
+   .filter(x=>x[0]>0).sort((x,y)=>y[0]-x[0]).map(x=>x[1]);
 }
-function consultSubmit(e){
-  e&&e.preventDefault();
-  const q=$('#cq').value.trim(); if(!q) return;
-  const s=findStock(q);
-  if(s){$('#cnf').innerHTML='';openStock(s.symbol);return}
-  const m=location.hostname.match(/^([^.]+)\.github\.io$/), repo=location.pathname.split('/')[1]||'stock-picker';
-  const link=m?`https://github.com/${m[1]}/${repo}/actions/workflows/add-stock.yml`:null;
-  $('#cnf').innerHTML=`<div class="warnbox notfound">"${esc(q)}" עדיין לא ברשימה של הכלי. כדי לבדוק אותה, ${link?`<a href="${link}" target="_blank" rel="noopener">פתח את "הוספת מניה"</a>, לחץ Run workflow והקלד את הסימול (למשל <b>${L('SHOP')}</b> או <b>${L('TEVA.TA')}</b>).`:'הוסף אותה דרך "הוספת מניה" בלשונית Actions במאגר.'} אחרי כ-10 דקות היא תופיע כאן עם בדיקה מלאה.</div>`;
+function suggest(){
+  const m=matches($('#sq').value).slice(0,6);
+  $('#sugg').innerHTML=m.map(s=>`<button type="button" onclick="pick('${esc(s.symbol)}')"><span><b>${esc(nm(s))}</b> <span class="muted tiny">${esc(s.symbol)}</span></span><span class="vd v-${s.consult.verdict}">${VERD[s.consult.verdict]}</span></button>`).join('');
+  $('#sugg').classList.toggle('on',m.length>0&&$('#sq').value.trim().length>0); $('#nf').innerHTML='';
 }
-$('#ov').onclick=closeDr; document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDr()});
-
-function wire(){
-  const setSeg=(id,attr,val)=>document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle('on',b.dataset[attr]===val));
-  setSeg('profile','p',st.p); setSeg('mkt','m',st.m); $('#maxrisk').value=st.maxRisk;
-  document.querySelectorAll('#profile button').forEach(b=>b.onclick=()=>{st.p=b.dataset.p;st.maxRisk=PROFILES[st.p].maxRisk;$('#maxrisk').value=st.maxRisk;setSeg('profile','p',st.p);save();renderTable()});
-  document.querySelectorAll('#mkt button').forEach(b=>b.onclick=()=>{st.m=b.dataset.m;setSeg('mkt','m',st.m);save();renderTable()});
-  $('#maxrisk').onchange=e=>{st.maxRisk=+e.target.value;save();renderTable()};
-  $('#sector').onchange=e=>{st.sector=e.target.value;renderTable()};
-  $('#q').oninput=e=>{st.q=e.target.value;renderTable()};
-  $('#vf').onchange=e=>{st.v=e.target.value;renderTable()};
-  $('#cform').onsubmit=consultSubmit;
-  $('#cq').addEventListener('change',()=>{if(findStock($('#cq').value))consultSubmit()});
-  $('#clist').innerHTML=D.stocks.map(s=>`<option value="${esc((s.name_he||s.name)+' · '+s.symbol)}"></option>`).join('');
-  const buys=D.stocks.filter(s=>s.consult&&s.consult.verdict==='buy').sort((a,b)=>b.consult.score-a.consult.score).slice(0,8);
-  $('#cchips').innerHTML=buys.length?`<span class="muted small" style="align-self:center">כרגע במצב "לקנות עכשיו":</span>`+buys.map(s=>`<button class="chip" data-s="${esc(s.symbol)}">${esc(s.name_he||s.name)}</button>`).join(''):'';
-  document.querySelectorAll('#cchips .chip').forEach(b=>b.onclick=()=>openStock(b.dataset.s));
-  document.querySelectorAll('th[data-s]').forEach(th=>th.onclick=()=>{const k=th.dataset.s;if(st.sort===k)st.dir*=-1;else{st.sort=k;st.dir=(k==='rank'||k==='name'||k==='risk')?1:-1}renderTable()});
-  const secs=[...new Set(D.stocks.map(s=>s.sector).filter(Boolean))].sort();
-  $('#sector').innerHTML='<option value="">הכל</option>'+secs.map(s=>`<option value="${esc(s)}">${esc(SECT[s]||s)}</option>`).join('');
+function pick(sym){$('#sugg').classList.remove('on');$('#sq').value='';$('#sq').blur();openStock(sym)}
+function submitSearch(e){
+  e.preventDefault(); const q=$('#sq').value.trim(); if(!q) return;
+  const m=matches(q); if(m.length){pick(m[0].symbol);return}
+  $('#sugg').classList.remove('on');
+  const link=repoLink('actions/workflows/add-stock.yml');
+  $('#nf').innerHTML=`<div class="warnbox notfound">"${esc(q)}" עוד לא ברשימה. ${link?`אפשר להוסיף אותה: <a href="${link}" target="_blank" rel="noopener">פותחים את הדף הזה</a>, לוחצים Run workflow ומקלידים את הסימול באנגלית (למשל ${L('SHOP')}). מניות ת"א מסתיימות ב-${L('.TA')}. אחרי כ-10 דקות המניה תופיע כאן.`:'אפשר להוסיף אותה דרך "Add stock" במאגר.'}</div>`;
 }
 
+/* ---------- stock page ---------- */
+async function detail(sym){
+  if(cache[sym]) return cache[sym];
+  const r=await fetch('s/'+encodeURIComponent(sym)+'.json?'+(D.generated_at||'')); if(!r.ok) throw new Error(r.status);
+  return cache[sym]=await r.json();
+}
+function showPage(html,wide){const p=$('#pg');p.innerHTML=html;p.classList.toggle('wide',!!wide);p.classList.add('on');$('#ov').classList.add('on');document.body.style.overflow='hidden';document.body.classList.add('pgopen')}
+function closePage(){$('#pg').classList.remove('on');$('#ov').classList.remove('on');document.body.style.overflow='';document.body.classList.remove('pgopen');try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
+async function openStock(sym){
+  const s0=byS(sym); if(!s0) return;
+  try{history.replaceState(null,'',location.pathname+location.search+'#'+encodeURIComponent(sym))}catch(e){}
+  if(!$('#pg').classList.contains('on')||$('#pg').dataset.sym!==sym) showPage(`<div class="pbar"><h2 style="margin:0">${esc(nm(s0))}</h2><button class="x" onclick="closePage()" aria-label="סגירה">✕</button></div><div class="spin">טוען את הבדיקה…</div>`);
+  $('#pg').dataset.sym=sym;
+  let s; try{s=await detail(sym)}catch(e){$('#pg .spin').textContent='לא הצלחתי לטעון. נסה שוב בעוד רגע.';return}
+  if($('#pg').dataset.sym!==sym) return;
+  if(W[sym]){W[sym].seen=s.consult.verdict;saveW()}
+  const keep=$('#pg').scrollTop;
+  showPage(stockHTML(s)); $('#pg').scrollTop=keep; renderTabs(); if(tab==='watch') renderPanel();
+}
+function stockHTML(s){
+  const c=s.consult, v=c.verdict, ex=c.exit||{}, m=s.metrics;
+  const reasons=(c.reasons||[]).map(r=>{const k=c.checks.find(x=>x.key===r.key)||r;return `<li><span class="ic ${r.status}">${{good:'✓',ok:'!',bad:'✕',na:'?'}[r.status]}</span><div><b>${esc(k.name||r.title)}</b><span>${esc(k.plain||r.text)}</span></div></li>`}).join('');
+  const waits=(c.waits||[]).length?`<h3>${v==='avoid'?'מה צריך לקרות כדי שזה ישתנה':v==='wait'?'למה לחכות ולמה':'כדאי לדעת'}</h3><ul class="plain">${c.waits.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>`:'';
+  const plan=ex.target?`<section class="card"><h2>${v==='buy'?'אם קונים, זו התוכנית':'אם תקנה בהמשך, התוכנית לפי המחיר היום'}</h2>
+    <div class="plan"><div><span>✅ למכור ברווח כשהמחיר מגיע ל-</span><b class="pos">${num(ex.target)}</b><span>${pct(ex.target_pct,1)} מהמחיר היום</span></div>
+    <div><span>🛑 למכור ולעצור הפסד אם המחיר יורד ל-</span><b class="neg">${num(ex.stop)}</b><span>${pct(ex.stop_pct,1)} מהמחיר היום</span></div></div>
+    <p class="small muted" style="margin:10px 0 0">כלומר: על כל ₪1 שאתה מסכן, אפשר להרוויח בערך ₪${L(ex.rr)}. נקודת עצירת ההפסד חשובה: היא מונעת מהפסד קטן להפוך לגדול אם התחזית טעתה.</p></section>`:'';
+  const lvl=s.risk.level;
+  const checks=c.checks.map(k=>`<li><span class="ic ${k.status}">${{good:'✓',ok:'!',bad:'✕',na:'?'}[k.status]}</span><div><b>${esc(k.name)}</b><span>${esc(k.plain)}</span><div class="muted tiny" style="margin-top:2px">${esc(k.text)}</div></div></li>`).join('');
+  const f=s.fund||{}, mt=(a,b)=>`<div><span class="muted">${a}</span><b>${b}</b></div>`;
+  return `<div class="pbar"><div><h2 style="margin:0;font-size:24px">${esc(nm(s))}</h2><div class="muted small">${esc(s.symbol)} · ${esc(SECT[s.sector]||s.sector||'')} · מחיר ${num(s.price)} ${cur(s)}</div></div><button class="x" onclick="closePage()" aria-label="סגירה">✕</button></div>
+   <div class="verdict vb-${v}"><div class="small" style="opacity:.85">ההמלצה של הכלי</div><div class="big">${VICON[v]} ${VERD[v]}</div><p>${esc(c.summary)}</p></div>
+   <div class="acts"><button class="btn2 ${W[s.symbol]?'on':''}" onclick="toggleWatch('${esc(s.symbol)}')">${W[s.symbol]?'★ במעקב':'☆ לעקוב'}</button>
+     <button class="btn2 ${CMP.includes(s.symbol)?'on':''}" onclick="toggleCmp('${esc(s.symbol)}')">${CMP.includes(s.symbol)?'✓ בהשוואה':'⇄ להשוות'}</button></div>
+   ${CMP.length>=2&&CMP.includes(s.symbol)?`<button class="btn more" onclick="openCompare()">השווה עכשיו: ${CMP.map(x=>esc(nm(byS(x)))).join(' מול ')}</button>`:CMP.length===1&&CMP.includes(s.symbol)?'<p class="muted tiny" style="margin:6px 0 0">עכשיו פתח מניה נוספת ולחץ "להשוות".</p>':''}
+   ${W[s.symbol]?`<p class="small" style="margin:8px 0 0">התראה כשהמחיר יורד ל: <input type="number" inputmode="decimal" step="any" value="${W[s.symbol].target??''}" placeholder="מחיר" style="width:110px;font:inherit;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)" onchange="W['${esc(s.symbol)}'].target=this.value?+this.value:null;saveW()"></p>`:''}
+   <section class="card" style="margin-top:12px"><h2>למה?</h2><ul class="why">${reasons}</ul>${waits}</section>
+   ${plan}
+   <section class="card"><h2>כמה זה מסוכן?</h2><div class="meter">${[1,2,3,4,5].map(i=>`<i class="${i<=lvl?'f'+lvl:''}"></i>`).join('')}</div>
+     <b>${RISKW[lvl]} (${lvl} מתוך 5)</b><div class="small">${RISKS[lvl]}</div>
+     ${m.max_dd!=null?`<div class="small muted" style="margin-top:4px">בשנה האחרונה: ${pct(m.ret_1y)} בסך הכול. בשלב הכי גרוע היא הייתה ${L(Math.round(Math.abs(m.max_dd)*100)+'%')} מתחת לשיא.</div>`:''}</section>
+   <details><summary>כל 12 הבדיקות (${c.counts.good} טובות, ${c.counts.ok} בינוניות, ${c.counts.bad} חלשות)</summary><ul class="why">${checks}</ul></details>
+   ${(s.news||[]).length?`<details><summary>חדשות אחרונות (באנגלית)</summary><div class="news"><ul>${s.news.map(n=>`<li><a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a> <span class="muted tiny">${esc(n.source)}${n.date?' · '+new Date(n.date).toLocaleDateString('he-IL'):''}</span></li>`).join('')}</ul></div></details>`:''}
+   ${s.about?`<details><summary>מה החברה עושה (באנגלית)</summary><p class="small" dir="ltr" style="text-align:left">${esc(s.about)}</p></details>`:''}
+   <details><summary>מספרים למתקדמים</summary><div class="mt">
+     ${mt('חודש',`<span class="${cls(m.ret_1m)}">${pct(m.ret_1m,1)}</span>`)}${mt('חצי שנה',`<span class="${cls(m.ret_6m)}">${pct(m.ret_6m,1)}</span>`)}${mt('שנה',`<span class="${cls(m.ret_1y)}">${pct(m.ret_1y,1)}</span>`)}
+     ${mt('מכפיל רווח',num(f.trailingPE,1))}${mt('מכפיל רווח עתידי',num(f.forwardPE,1))}${mt('שולי רווח',pct(f.profitMargins))}
+     ${mt('תשואה על ההון',pct(f.returnOnEquity))}${mt('צמיחת הכנסות',pct(f.revenueGrowth))}${mt('דיבידנד',f.dividendYield!=null?L(num(f.dividendYield)+'%'):'—')}
+     ${mt('RSI',num(m.rsi14,0))}${mt('ממוצע 50 יום',num(m.ma50))}${mt('ממוצע 200 יום',num(m.ma200))}
+     ${mt('בטא',num(m.beta))}${mt('יעד אנליסטים',num(f.targetMeanPrice))}${mt('דוח הבא',s.earnings&&s.earnings.next?esc(s.earnings.next):'—')}</div>
+     <p class="muted tiny">ציון כולל ${L(c.score)} (מ-100- עד 100+), ביטחון ${esc(c.confidence)}.</p></details>
+   <p class="muted tiny" style="margin-top:14px">נכון לנתוני ${new Date(D.generated_at).toLocaleDateString('he-IL')}. לא ייעוץ השקעות. ההחלטה והאחריות שלך.</p>`;
+}
+function toggleWatch(sym){const s=byS(sym);if(W[sym])delete W[sym];else W[sym]={target:null,seen:s&&s.consult.verdict};saveW();renderTabs();if(tab==='watch')renderPanel();openStock(sym)}
+function toggleCmp(sym){const i=CMP.indexOf(sym);if(i>=0)CMP.splice(i,1);else{if(CMP.length>=3)CMP.shift();CMP.push(sym)};renderTbar();openStock(sym)}
+function renderTbar(){
+  const b=$('#tbar');b.classList.toggle('on',CMP.length>0);
+  b.innerHTML=`<span>להשוואה: ${CMP.map(x=>esc(nm(byS(x)))).join(', ')}</span>${CMP.length>=2?'<button style="background:var(--accent);color:#fff" onclick="openCompare()">השווה</button>':'<span style="opacity:.7;flex:none">בחר עוד מניה</span>'}<button style="background:transparent;color:inherit" onclick="CMP=[];renderTbar()" aria-label="ניקוי">✕</button>`;
+}
+async function openCompare(){
+  showPage(`<div class="pbar"><h2 style="margin:0">השוואה</h2><button class="x" onclick="closePage()">✕</button></div><div class="spin">טוען…</div>`,true);
+  $('#pg').dataset.sym='';
+  let S; try{S=await Promise.all(CMP.map(detail))}catch(e){$('#pg .spin').textContent='לא הצלחתי לטעון.';return}
+  const best=[...S].sort((a,b)=>(VORD[b.consult.verdict]*1000+b.consult.score)-(VORD[a.consult.verdict]*1000+a.consult.score))[0];
+  const ic={good:'✓',ok:'!',bad:'✕',na:'?'};
+  const row=(t,fn)=>`<tr><th>${t}</th>${S.map(s=>`<td>${fn(s)}</td>`).join('')}</tr>`;
+  showPage(`<div class="pbar"><h2 style="margin:0">השוואה</h2><button class="x" onclick="closePage()" aria-label="סגירה">✕</button></div>
+   <p>מבין ${S.length} המניות, <b>${esc(nm(best))}</b> נמצאת במצב הכי טוב לפי הבדיקה.</p>
+   <div class="card tw"><table class="cmp"><thead><tr><th></th>${S.map(s=>`<th><a href="#" onclick="openStock('${esc(s.symbol)}');return false" style="color:inherit">${esc(nm(s))}</a></th>`).join('')}</tr></thead><tbody>
+    ${row('המלצה',s=>`<span class="vd v-${s.consult.verdict}">${VERD[s.consult.verdict]}</span>`)}
+    ${row('כמה מסוכן',s=>RISKW[s.risk.level])}
+    ${row('בשנה האחרונה',s=>`<span class="${cls(s.metrics.ret_1y)}">${pct(s.metrics.ret_1y)}</span>`)}
+    ${row('יעד רווח / עצירת הפסד',s=>s.consult.exit&&s.consult.exit.target?`<span class="pos">${pct(s.consult.exit.target_pct)}</span> / <span class="neg">${pct(s.consult.exit.stop_pct)}</span>`:'—')}
+    ${S[0].consult.checks.map(k=>row(esc(k.name),s=>{const c=s.consult.checks.find(x=>x.key===k.key);return c?`<span class="ic ${c.status}" style="display:inline-grid;width:20px;height:20px;font-size:11px;vertical-align:middle">${ic[c.status]}</span> <span class="small">${esc(c.plain)}</span>`:'—'})).join('')}
+   </tbody></table></div><p class="muted tiny">לא ייעוץ השקעות.</p>`,true);
+}
+function openGlossary(){
+  showPage(`<div class="pbar"><h2 style="margin:0">מילון מושגים</h2><button class="x" onclick="closePage()" aria-label="סגירה">✕</button></div>
+  <dl class="gl">
+   <dt>מניה</dt><dd>חלק קטן מחברה. כשהחברה מצליחה, המחיר בדרך כלל עולה, וכשהיא נכשלת הוא יורד.</dd>
+   <dt>סימול</dt><dd>השם הקצר של המניה בבורסה, למשל AAPL לאפל. מניות בתל אביב מסתיימות ב-.TA.</dd>
+   <dt>לקנות עכשיו / לחכות / לא לקנות</dt><dd>הסיכום של 12 בדיקות. "לחכות" לא אומר שהחברה גרועה, אלא שהרגע לא מתאים, למשל לפני דוח רווחים או אחרי קפיצה חדה.</dd>
+   <dt>יעד רווח</dt><dd>המחיר שבו כדאי לשקול למכור ולקחת את הרווח.</dd>
+   <dt>עצירת הפסד (סטופ-לוס)</dt><dd>מחיר שקובעים מראש: אם המניה יורדת אליו, מוכרים. ככה הפסד קטן לא הופך לגדול.</dd>
+   <dt>דוח רווחים</dt><dd>פעם ברבעון החברה מפרסמת כמה מכרה והרוויחה. ביום הזה המחיר יכול לקפוץ או לצנוח.</dd>
+   <dt>כמה המניה קופצת (סיכון)</dt><dd>עד כמה המחיר עולה ויורד. מניה "רגועה" זזה מעט, ומניה ש"קופצת חזק" יכולה לרדת הרבה בזמן קצר.</dd>
+   <dt>מגמה</dt><dd>הכיוון של המחיר בחודשים האחרונים: עולה, יורד או בלי כיוון.</dd>
+   <dt>מכפיל רווח</dt><dd>כמה שנים של רווח אתה משלם במחיר המניה. נמוך פירושו זול, גבוה פירושו יקר.</dd>
+   <dt>אנליסטים</dt><dd>מומחים בבנקים ובבתי השקעות שעוקבים אחרי החברה ונותנים המלצה ומחיר יעד.</dd>
+   <dt>מדד (S&P 500, ת"א 125)</dt><dd>סל של הרבה מניות גדולות. משמש כדי לדעת מה מצב הבורסה כולה.</dd>
+   <dt>מדד הפחד (VIX)</dt><dd>מודד כמה המשקיעים לחוצים. מספר גבוה פירושו פחד ותנודות חזקות.</dd>
+   <dt>לקנות בהדרגה</dt><dd>במקום לקנות בבת אחת, קונים בכמה פעמים לאורך כמה שבועות. ככה לא נתפסים בשיא.</dd>
+   <dt>פיזור</dt><dd>לא לשים את כל הכסף במניה אחת. אם אחת נופלת, האחרות מאזנות.</dd>
+  </dl>
+  <p class="small"><b>כלל אצבע:</b> משקיעים רק כסף שלא צריך בשנים הקרובות, ולא כסף שאי אפשר להרשות לעצמך להפסיד.</p>`);
+}
+
+/* ---------- boot ---------- */
+$('#ov').onclick=closePage; document.addEventListener('keydown',e=>{if(e.key==='Escape')closePage()});
+$('#sform').onsubmit=submitSearch; $('#sq').addEventListener('input',suggest);
+document.addEventListener('click',e=>{if(!e.target.closest('.search'))$('#sugg').classList.remove('on')});
 fetch('data.json?'+Date.now()).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{
-  D=d;
-  const dt=new Date(d.generated_at);
-  $('#updated').textContent=`עודכן ${dt.toLocaleString('he-IL',{dateStyle:'medium',timeStyle:'short'})} · ${d.count} מניות`;
-  if(d.synthetic)$('#synthetic').innerHTML='<div class="warnbox">נתוני הדגמה אקראיים בלבד, לא נתוני שוק אמיתיים.</div>';
-  if((Date.now()-dt)/864e5>4)$('#synthetic').innerHTML+='<div class="warnbox">הנתונים לא עודכנו כמה ימים. ייתכן שהעדכון האוטומטי נכשל.</div>';
-  renderMarket(); wire(); renderTable(); renderWatch(); renderChanges(); renderTrack(); renderTbar();
-  const h=decodeURIComponent(location.hash.slice(1)); if(h) openStock(h);
-}).catch(e=>{$('#updated').textContent='הנתונים עוד לא נוצרו. העדכון האוטומטי הראשון ירוץ בקרוב.';});
+  D=d; const dt=new Date(d.generated_at);
+  $('#updated').textContent=`עודכן ${dt.toLocaleString('he-IL',{weekday:'long',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'})}`;
+  if(d.synthetic)$('#warn').innerHTML+='<div class="warnbox">נתוני הדגמה אקראיים, לא נתוני אמת.</div>';
+  if((Date.now()-dt)/864e5>4)$('#warn').innerHTML+='<div class="warnbox">הנתונים לא עודכנו כמה ימים. ייתכן שהעדכון האוטומטי נכשל.</div>';
+  renderMarket(); renderTabs(); renderPanel(); renderTrack(); renderTbar();
+  const h=decodeURIComponent(location.hash.slice(1)); if(h&&byS(h)) openStock(h);
+}).catch(e=>{$('#updated').textContent='לא הצלחתי לטעון את הנתונים. נסה לרענן.'});
 </script>
 </body>
 </html>
