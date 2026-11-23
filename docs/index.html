@@ -127,6 +127,22 @@ body.pgopen .tbar{display:none}
 .stat b{display:block;font-size:22px}
 dl.gl dt{font-weight:800;margin-top:10px} dl.gl dd{margin:2px 0 0;color:var(--muted)}
 .spin{padding:30px;text-align:center;color:var(--muted)}
+/* my stocks */
+.hform{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:end;margin:6px 0 4px}
+@media(max-width:560px){.hform{grid-template-columns:1fr 1fr}.hform .f-sym,.hform .btn{grid-column:1/-1}}
+.hform label{display:flex;flex-direction:column;font-size:13px;color:var(--muted);gap:3px;min-width:0}
+.hform input,.inp{font:inherit;font-size:16px;padding:9px 10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);min-width:0;width:100%}
+.hform .btn{padding:10px 18px}
+.ferr{color:var(--neg);font-size:14px;margin-top:4px}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 12px}
+@media(max-width:460px){.sum{grid-template-columns:1fr 1fr}}
+.sum div{background:var(--soft);border-radius:12px;padding:8px 12px;font-size:13.5px;color:var(--muted)}
+.sum b{display:block;font-size:19px;color:var(--ink);font-variant-numeric:tabular-nums}
+.v-add{background:var(--posbg);color:var(--pos)} .v-sell{background:var(--negbg);color:var(--neg)} .v-hold{background:var(--warnbg);color:var(--warn)}
+.vb-add{background:var(--posbg);color:var(--pos)} .vb-sell{background:var(--negbg);color:var(--neg)} .vb-hold{background:var(--warnbg);color:var(--warn)}
+.hwhy{font-size:13.5px;color:var(--ink);margin-top:2px}
+.hedit{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.hedit label{display:flex;flex-direction:column;font-size:13px;color:var(--muted);gap:3px}
 </style>
 </head>
 <body>
@@ -167,8 +183,9 @@ const RISKW=['','רגועה מאוד','רגועה','בינונית','קופצת 
 const RISKS=['','מניה יציבה. בדרך כלל זזה מעט.','מניה די יציבה.','תנודות רגילות: יש ימים של עליות וירידות של כמה אחוזים.','מניה שזזה הרבה. יכולה לרדת 30% ויותר בתקופה קשה.','מניה שזזה חזק מאוד. יכולה לרדת בחצי בתקופה קשה. מתאים רק לכסף שאפשר להרשות לעצמך להפסיד.'];
 const SECT={'Technology':'טכנולוגיה','Financial Services':'פיננסים','Healthcare':'בריאות','Consumer Cyclical':'צריכה','Consumer Defensive':'מוצרי יסוד',
  'Communication Services':'תקשורת ומדיה','Industrials':'תעשייה','Energy':'אנרגיה','Utilities':'חשמל ותשתיות','Real Estate':'נדל"ן','Basic Materials':'חומרי גלם'};
-let showAll=0, D=null, tab='buy', vf='', mf='', W={}, CMP=[], cache={};
+let showAll=0, D=null, tab='buy', vf='', mf='', W={}, H={}, CMP=[], cache={};
 try{W=JSON.parse(localStorage.getItem('sp_watch')||'{}')}catch(e){}
+try{H=JSON.parse(localStorage.getItem('sp_hold')||'{}')}catch(e){}
 try{tab=localStorage.getItem('sp_tab')||'buy'}catch(e){}
 
 const $=s=>document.querySelector(s);
@@ -182,6 +199,55 @@ const nm=s=>s.name_he||s.name;
 const byS=sym=>D.stocks.find(s=>s.symbol===sym);
 const repoLink=(p)=>{const m=location.hostname.match(/^([^.]+)\.github\.io$/);return m?`https://github.com/${m[1]}/${location.pathname.split('/')[1]||'stock-picker'}/${p}`:null};
 function saveW(){try{localStorage.setItem('sp_watch',JSON.stringify(W))}catch(e){}}
+function saveH(){try{localStorage.setItem('sp_hold',JSON.stringify(H))}catch(e){}}
+
+/* ---------- my stocks: advice per holding ---------- */
+const ACT={add:'לקנות עוד',sell:'למכור',hold:'לחכות'}, AICON={add:'🟢',sell:'🔴',hold:'🟡'}, AORD={sell:3,add:2,hold:1};
+const toILS=(s,x)=>x*(s.currency==='ILA'?0.01:s.currency==='USD'?((D.market||{}).usdils||3.7):1);
+function holdPlan(s,h){
+  // stop / target for this holding. Custom values win. Otherwise: from the buy price, and once in profit the stop trails today's stop.
+  const ex=s.consult.exit||{}, sp=ex.stop_pct??-0.08, tp=ex.target_pct??0.15, p=s.price, c=h.cost;
+  let stop=h.stop, target=h.target, auto={stop:!h.stop,target:!h.target};
+  if(!stop) stop=c?(p>c&&ex.stop?Math.max(ex.stop,c*(1+sp)):c*(1+sp)):null;
+  if(!target) target=c?c*(1+tp):null;
+  return {stop,target,auto};
+}
+function holdAdvice(s,h,weight){
+  const v=s.consult.verdict, p=s.price, c=h.cost, g=c?p/c-1:null, pl=holdPlan(s,h), why=[];
+  const gtxt=g==null?'':`אתה ב${g>=0?'רווח':'הפסד'} של ${L(Math.abs(g*100).toFixed(1)+'%')}.`;
+  if(pl.stop&&p<=pl.stop){
+    why.push(`המחיר (${num(p)}) ירד לנקודת עצירת ההפסד שלך (${num(pl.stop)}).`, gtxt, 'מוכרים כדי שהפסד קטן לא יהפוך לגדול. זו בדיוק הסיבה שקובעים את הנקודה מראש.');
+    return {act:'sell',title:'למכור: הגיעה לעצירת הפסד',why};
+  }
+  if(v==='avoid'){
+    why.push(`הבדיקה של המניה אומרת "לא לקנות": ${s.consult.summary}`, gtxt, g!=null&&g>0?'כדאי לשקול לממש את הרווח לפני שהוא נמחק.':'כשהעסק או המגמה נחלשים, עדיף לצאת לפני שההפסד גדל.');
+    return {act:'sell',title:'למכור: המניה נחלשה',why};
+  }
+  if(pl.target&&p>=pl.target){
+    if(v==='buy'){
+      why.push(`הגעת ליעד הרווח (${num(pl.target)}). ${gtxt}`,'המגמה עדיין חזקה, אז אפשר להמשיך להחזיק, אבל לא להוסיף במחיר הזה.',pl.stop?`אם המחיר יורד ל-${num(pl.stop)}, למכור ולשמור על הרווח.`:'');
+      return {act:'hold',title:'לחכות: הגעת ליעד, להחזיק עם הגנה',why};
+    }
+    why.push(`הגעת ליעד הרווח (${num(pl.target)}). ${gtxt}`,`הבדיקה של המניה כרגע: ${s.consult.summary}`,'אפשר למכור חלק (למשל חצי) ולהשאיר את השאר עם עצירת הפסד.');
+    return {act:'sell',title:'למכור חלק: לממש רווח',why};
+  }
+  if(v==='buy'){
+    if(weight>0.25){
+      why.push(`המניה במצב טוב, אבל היא כבר ${L(Math.round(weight*100)+'%')} מהתיק שלך.`,'לא כדאי לשים יותר מרבע מהכסף במניה אחת. עדיף להחזיק ולא להוסיף.',gtxt);
+      return {act:'hold',title:'לחכות: כבר יש לך הרבה ממנה',why};
+    }
+    why.push(`הבדיקה של המניה אומרת "לקנות עכשיו": ${s.consult.summary}`,gtxt,'אם מוסיפים, עדיף בהדרגה, ולשמור על עצירת ההפסד.');
+    return {act:'add',title:'לקנות עוד',why};
+  }
+  why.push(`הבדיקה של המניה אומרת "לחכות": ${s.consult.summary}`,gtxt,'להחזיק את מה שיש, לא להוסיף כרגע. ההמלצה תתעדכן כל יום.');
+  return {act:'hold',title:'לחכות: להחזיק, לא להוסיף',why};
+}
+function holdRows(){
+  const rows=Object.keys(H).map(sym=>{const s=byS(sym),h=H[sym];return {sym,s,h,val:s?toILS(s,h.qty*s.price):0,cost:s&&h.cost?toILS(s,h.qty*h.cost):null}});
+  const tot=rows.reduce((a,r)=>a+r.val,0);
+  rows.forEach(r=>{r.w=tot?r.val/tot:0; r.adv=r.s?holdAdvice(r.s,r.h,r.w):null});
+  return {rows,tot};
+}
 
 /* ---------- home ---------- */
 function renderMarket(){
@@ -213,7 +279,7 @@ function alertsFor(sym){
 }
 function renderTabs(){
   const nb=D.stocks.filter(s=>s.consult.verdict==='buy').length, nw=Object.keys(W).length, nc=(D.changes||[]).length;
-  const T=[['buy',`🟢 שווה לקנות עכשיו <span class="n">${nb}</span>`],['watch',`★ המעקב שלי <span class="n">${nw}</span>`],['changes',`🔁 מה השתנה <span class="n">${nc}</span>`],['all',`📋 כל המניות <span class="n">${D.stocks.length}</span>`]];
+  const T=[['buy',`🟢 שווה לקנות עכשיו <span class="n">${nb}</span>`],['watch',`★ המעקב שלי <span class="n">${nw}</span>`],['mine',`💼 המניות שלי <span class="n">${Object.keys(H).length}</span>`],['changes',`🔁 מה השתנה <span class="n">${nc}</span>`],['all',`📋 כל המניות <span class="n">${D.stocks.length}</span>`]];
   $('#tabs').innerHTML=T.map(([k,t])=>`<button class="tab ${tab===k?'on':''}" role="tab" onclick="setTab('${k}')">${t}</button>`).join('');
 }
 function setTab(k){tab=k;try{localStorage.setItem('sp_tab',k)}catch(e){};renderTabs();renderPanel()}
@@ -230,6 +296,8 @@ function renderPanel(){
     P.innerHTML=`<h2>★ המעקב שלי</h2>${syms.length?`<div class="list">${syms.map(x=>row(byS(x),alertsFor(x).map(a=>`<div class="alert">🔔 ${esc(a)}</div>`).join('')+(W[x].target?`<span> · מחיר שרצית: ${num(W[x].target)}</span>`:''))).join('')}</div>`
      :'<div class="empty">עוד אין מניות במעקב. פתח מניה ולחץ על "☆ לעקוב". כאן תראה התראה כשהיא הופכת ל"לקנות עכשיו" או מגיעה למחיר שרצית.</div>'}
      <p class="muted tiny">הרשימה הזו שמורה רק בטלפון או במחשב הזה.${wf?` כדי לקבל התראה במייל ובאפליקציית GitHub, <a href="${wf}" target="_blank" rel="noopener">הוסף את המניה כאן</a> (Run workflow, ואז מקלידים את הסימול).`:''}</p>`;
+  } else if(tab==='mine'){
+    renderMine(P);
   } else if(tab==='changes'){
     const ch=D.changes||[];
     P.innerHTML=`<h2>מה השתנה מאתמול</h2>${ch.length?`<div class="list">${[...ch].sort((a,b)=>VORD[b.to]-VORD[a.to]).map(c=>{const s=byS(c.symbol);return s?row(s,`<span>היה: ${VERD[c.from]}</span>`):''}).join('')}</div>`
@@ -243,6 +311,68 @@ function renderPanel(){
      <div class="filters">${ch('m','','כל הבורסות')}${ch('m','US','🇺🇸 ארה"ב')}${ch('m','TA','🇮🇱 תל אביב')}</div>
      <div class="list">${r.map(s=>row(s,`<span>בשנה: <span class="${cls(s.metrics.ret_1y)}">${pct(s.metrics.ret_1y)}</span></span>`)).join('')||'<div class="empty">אין מניות שמתאימות לסינון</div>'}</div>`;
   }
+}
+function renderMine(P){
+  const {rows,tot}=holdRows();
+  rows.sort((a,b)=>(b.adv?AORD[b.adv.act]:9)-(a.adv?AORD[a.adv.act]:9)||b.val-a.val);
+  const ok=rows.filter(r=>r.cost!=null&&r.s), cs=ok.reduce((a,r)=>a+r.cost,0), vs=ok.reduce((a,r)=>a+r.val,0);
+  const cnt={add:0,sell:0,hold:0}; rows.forEach(r=>r.adv&&cnt[r.adv.act]++);
+  const sum=rows.length?`<div class="sum"><div>שווי התיק היום<b>${L('₪'+Math.round(tot).toLocaleString('he-IL'))}</b></div>
+    <div>רווח / הפסד${ok.length<rows.length?' (למניות עם מחיר קנייה)':''}<b class="${cs?cls(vs-cs):''}">${cs?L((vs-cs>=0?'+':'-')+'₪'+Math.abs(Math.round(vs-cs)).toLocaleString('he-IL'))+' '+pct(vs/cs-1,1):'—'}</b></div>
+    <div>המלצות<b style="font-size:15px;line-height:1.7">${cnt.sell?`<span class="vd v-sell">${cnt.sell} למכור</span> `:''}${cnt.add?`<span class="vd v-add">${cnt.add} לקנות עוד</span> `:''}${cnt.hold?`<span class="vd v-hold">${cnt.hold} לחכות</span>`:''}</b></div></div>`:'';
+  const list=rows.map(r=>{
+    if(!r.s) return `<div class="row" style="cursor:default"><div class="nm"><b>${esc(r.sym)}</b><span>${num(r.h.qty,4)} יחידות · המניה לא ברשימה של הכלי, אין לה בדיקה</span></div><div class="side"><button class="chip" onclick="delHold('${esc(r.sym)}')">הסר</button></div></div>`;
+    const s=r.s,h=r.h,g=h.cost?s.price/h.cost-1:null,a=r.adv;
+    return `<div class="row" onclick="openStock('${esc(s.symbol)}')"><div class="nm"><b>${esc(nm(s))}</b>
+      <span>${esc(s.symbol)} · ${num(h.qty,4)} יחידות · שווי ${num(h.qty*s.price,0)} ${cur(s)}${g!=null?` · <span class="${cls(g)}">${pct(g,1)}</span>`:''} · ${L(Math.round(r.w*100)+'%')} מהתיק</span>
+      <div class="hwhy">${esc(a.title)}</div></div>
+      <div class="side"><span class="vd v-${a.act}">${ACT[a.act]}</span><div style="margin-top:3px">היום: ${VERD[s.consult.verdict]}</div></div></div>`}).join('');
+  const opts=D.stocks.map(s=>`<option value="${esc(s.symbol)}">${esc(nm(s))}</option>`).join('');
+  P.innerHTML=`<h2>💼 המניות שלי</h2><p class="muted small" style="margin-top:-4px">רושמים מה יש לך, וכל יום הכלי אומר לכל מניה: <span class="vd v-add">לקנות עוד</span> <span class="vd v-sell">למכור</span> או <span class="vd v-hold">לחכות</span>. לחיצה על מניה מראה למה.</p>
+   ${sum}<div class="list">${list||'<div class="empty">עוד לא רשמת מניות. הוסף כאן למטה את המניה הראשונה.</div>'}</div>
+   <h3>הוספת מניה שיש לי</h3>
+   <form class="hform" onsubmit="addHold(event)" autocomplete="off">
+     <label class="f-sym">מניה<input id="hsym" list="hlist" placeholder="שם או סימול, למשל אפל" required></label>
+     <label>כמות<input id="hqty" type="number" inputmode="decimal" step="any" min="0" placeholder="10" required></label>
+     <label>מחיר קנייה<input id="hcost" type="number" inputmode="decimal" step="any" min="0" placeholder="לא חובה"></label>
+     <button class="btn" type="submit">הוסף</button>
+   </form><datalist id="hlist">${opts}</datalist><div id="herr"></div>
+   <p class="muted tiny">מחיר קנייה באותו מטבע שבו מוצג המחיר באתר (דולר למניות בארה"ב, אגורות למניות בת"א). בלי מחיר קנייה אין חישוב רווח ונקודת עצירת הפסד. אם כבר יש לך את המניה, ההוספה מצרפת את הכמות ומחשבת מחיר ממוצע.<br>הרשימה שמורה רק בטלפון או במחשב הזה, ולא נשלחת לשום מקום. לא ייעוץ השקעות.</p>`;
+}
+function addHold(e){
+  e.preventDefault();
+  const q=$('#hsym').value.trim(), qty=+$('#hqty').value, cost=$('#hcost').value?+$('#hcost').value:null;
+  const s=byS(q.toUpperCase())||matches(q)[0];
+  if(!s){const link=repoLink('actions/workflows/add-stock.yml');$('#herr').innerHTML=`<div class="ferr">"${esc(q)}" לא ברשימה של הכלי.${link?` <a href="${link}" target="_blank" rel="noopener">אפשר להוסיף אותה</a> (Run workflow והסימול באנגלית), ואחרי כ-10 דקות לרשום אותה כאן.`:''}</div>`;return}
+  if(!(qty>0)){$('#herr').innerHTML='<div class="ferr">צריך כמות גדולה מאפס.</div>';return}
+  const o=H[s.symbol];
+  if(o){const nq=o.qty+qty; o.cost=o.cost&&cost?(o.cost*o.qty+cost*qty)/nq:(o.cost||cost); o.qty=nq;}
+  else H[s.symbol]={qty,cost,added:new Date().toISOString().slice(0,10)};
+  saveH(); renderTabs(); renderPanel();
+}
+function delHold(sym){delete H[sym];saveH();renderTabs();if(tab==='mine')renderPanel();if($('#pg').classList.contains('on')&&$('#pg').dataset.sym===sym)openStock(sym)}
+function editHold(sym,k,val){
+  if(!H[sym]){H[sym]={qty:0,cost:null,added:new Date().toISOString().slice(0,10)}}
+  const x=val===''?null:+val; if(k==='qty'){if(!(x>0))return delHold(sym);H[sym].qty=x}else H[sym][k]=x>0?x:null;
+  saveH(); renderTabs(); if(tab==='mine')renderPanel(); openStock(sym);
+}
+function holdHTML(s){
+  const h=H[s.symbol];
+  if(!h) return '';
+  const {rows}=holdRows(), r=rows.find(x=>x.sym===s.symbol), a=holdAdvice(s,h,r?r.w:0), pl=holdPlan(s,h), g=h.cost?s.price/h.cost-1:null;
+  const inp=(k,lab,v,ph)=>`<label>${lab}<input class="inp" type="number" inputmode="decimal" step="any" min="0" value="${v??''}" placeholder="${ph}" onchange="editHold('${esc(s.symbol)}','${k}',this.value)"></label>`;
+  return `<section class="card" style="margin-top:12px"><h2>💼 המניה שלך</h2>
+   <div class="verdict vb-${a.act}" style="margin-top:4px"><div class="small" style="opacity:.85">מה לעשות עם מה שיש לך</div><div class="big">${AICON[a.act]} ${esc(a.title)}</div></div>
+   <ul class="plain">${a.why.filter(Boolean).map(w=>`<li>${esc(w)}</li>`).join('')}</ul>
+   <div class="plan"><div><span>יש לך</span><b>${num(h.qty,4)}</b><span>שווי ${num(h.qty*s.price,0)} ${cur(s)}${r?` · ${L(Math.round(r.w*100)+'%')} מהתיק`:''}</span></div>
+    <div><span>רווח / הפסד</span><b class="${cls(g)}">${g==null?'—':pct(g,1)}</b><span>${h.cost?`קנית ב-${num(h.cost)}`:'הזן מחיר קנייה כדי לראות'}</span></div>
+    <div><span>✅ יעד רווח${pl.auto.target?' (אוטומטי)':''}</span><b class="pos">${num(pl.target)}</b><span>${pl.target?pct(pl.target/s.price-1,1)+' מהמחיר היום':'צריך מחיר קנייה'}</span></div>
+    <div><span>🛑 עצירת הפסד${pl.auto.stop?' (אוטומטי)':''}</span><b class="neg">${num(pl.stop)}</b><span>${pl.stop?pct(pl.stop/s.price-1,1)+' מהמחיר היום':'צריך מחיר קנייה'}</span></div></div>
+   <details style="margin-top:10px"><summary>עריכה</summary><div class="hedit">
+     ${inp('qty','כמות',h.qty,'')}${inp('cost','מחיר קנייה',h.cost!=null?+h.cost.toFixed(4):'','לא חובה')}
+     ${inp('target','יעד רווח משלך',h.target,'אוטומטי')}${inp('stop','עצירת הפסד משלך',h.stop,'אוטומטי')}</div>
+     <p class="muted tiny">אם משאירים ריק, היעד והעצירה מחושבים לפי מחיר הקנייה והתנודתיות של המניה. כשאתה ברווח, העצירה עולה עם המחיר כדי לשמור על הרווח.</p>
+     <button class="btn2" style="width:100%" onclick="delHold('${esc(s.symbol)}')">הסר מהמניות שלי</button></details></section>`;
 }
 function renderTrack(){
   const T=D.track; if(!T){$('#track').style.display='none';return}
@@ -314,9 +444,11 @@ function stockHTML(s){
   return `<div class="pbar"><div><h2 style="margin:0;font-size:24px">${esc(nm(s))}</h2><div class="muted small">${esc(s.symbol)} · ${esc(SECT[s.sector]||s.sector||'')} · מחיר ${num(s.price)} ${cur(s)}</div></div><button class="x" onclick="closePage()" aria-label="סגירה">✕</button></div>
    <div class="verdict vb-${v}"><div class="small" style="opacity:.85">ההמלצה של הכלי</div><div class="big">${VICON[v]} ${VERD[v]}</div><p>${esc(c.summary)}</p></div>
    <div class="acts"><button class="btn2 ${W[s.symbol]?'on':''}" onclick="toggleWatch('${esc(s.symbol)}')">${W[s.symbol]?'★ במעקב':'☆ לעקוב'}</button>
-     <button class="btn2 ${CMP.includes(s.symbol)?'on':''}" onclick="toggleCmp('${esc(s.symbol)}')">${CMP.includes(s.symbol)?'✓ בהשוואה':'⇄ להשוות'}</button></div>
+     <button class="btn2 ${CMP.includes(s.symbol)?'on':''}" onclick="toggleCmp('${esc(s.symbol)}')">${CMP.includes(s.symbol)?'✓ בהשוואה':'⇄ להשוות'}</button>
+     ${H[s.symbol]?'':`<button class="btn2" onclick="tab='mine';closePage();renderTabs();renderPanel();$('#hsym').value='${esc(s.symbol)}';$('#hqty').focus();$('#panel').scrollIntoView({behavior:'smooth'})">💼 יש לי</button>`}</div>
    ${CMP.length>=2&&CMP.includes(s.symbol)?`<button class="btn more" onclick="openCompare()">השווה עכשיו: ${CMP.map(x=>esc(nm(byS(x)))).join(' מול ')}</button>`:CMP.length===1&&CMP.includes(s.symbol)?'<p class="muted tiny" style="margin:6px 0 0">עכשיו פתח מניה נוספת ולחץ "להשוות".</p>':''}
    ${W[s.symbol]?`<p class="small" style="margin:8px 0 0">התראה כשהמחיר יורד ל: <input type="number" inputmode="decimal" step="any" value="${W[s.symbol].target??''}" placeholder="מחיר" style="width:110px;font:inherit;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)" onchange="W['${esc(s.symbol)}'].target=this.value?+this.value:null;saveW()"></p>`:''}
+   ${holdHTML(s)}
    <section class="card" style="margin-top:12px"><h2>למה?</h2><ul class="why">${reasons}</ul>${waits}</section>
    ${plan}
    <section class="card"><h2>כמה זה מסוכן?</h2><div class="meter">${[1,2,3,4,5].map(i=>`<i class="${i<=lvl?'f'+lvl:''}"></i>`).join('')}</div>
