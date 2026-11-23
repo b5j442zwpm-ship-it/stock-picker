@@ -119,21 +119,30 @@ def news_score(items: list[dict]) -> float | None:
 
 # --------------------------------------------------------------------------------------
 def load_universe() -> list[dict]:
+    """tickers.txt: `SYMBOL | Hebrew name` lines, grouped under `# --- group name` headers."""
     out = []
-    for line in TICKERS_FILE.read_text(encoding="utf-8").splitlines():
-        line = line.split("#", 1)[0].strip()
+    group = ""
+    seen = set()
+    for raw in TICKERS_FILE.read_text(encoding="utf-8").splitlines():
+        if raw.strip().startswith("# ---"):
+            group = raw.strip()[5:].strip()
+            continue
+        line = raw.split("#", 1)[0].strip()
         if not line:
             continue
         parts = [p.strip() for p in line.split("|")]
-        sym = parts[0]
-        out.append({"symbol": sym, "name_he": parts[1] if len(parts) > 1 else "",
+        sym = parts[0].upper()
+        if sym in seen:
+            continue
+        seen.add(sym)
+        out.append({"symbol": sym, "name_he": parts[1] if len(parts) > 1 else "", "group": group,
                     "market": "TA" if sym.endswith(".TA") else "US"})
     # stocks on the watchlist are always analysed, even if they are not in tickers.txt
     have = {u["symbol"] for u in out}
     for w in load_watchlist():
         if w["symbol"] not in have:
             have.add(w["symbol"])
-            out.append({"symbol": w["symbol"], "name_he": "", "market": "TA" if w["symbol"].endswith(".TA") else "US"})
+            out.append({"symbol": w["symbol"], "name_he": "", "group": "", "market": "TA" if w["symbol"].endswith(".TA") else "US"})
     return out
 
 
@@ -191,7 +200,7 @@ INFO_KEYS = ["shortName", "longName", "sector", "industry", "marketCap", "curren
              "freeCashflow", "dividendYield", "targetMeanPrice", "recommendationMean",
              "numberOfAnalystOpinions", "currentPrice", "grossMargins", "totalCash", "totalDebt",
              "operatingCashflow", "recommendationKey", "earningsTimestamp", "earningsTimestampStart",
-             "shortPercentOfFloat", "longBusinessSummary"]
+             "shortPercentOfFloat", "longBusinessSummary", "quoteType", "totalAssets"]
 
 
 def fetch_earnings(t) -> list[dict]:
@@ -214,7 +223,7 @@ def fetch_earnings(t) -> list[dict]:
 
 def fetch_all(universe, yf):
     syms = [u["symbol"] for u in universe]
-    extra = sorted(set(BENCH.values()) | set(MACRO.values()))
+    extra = sorted((set(BENCH.values()) | set(MACRO.values())) - set(syms))
     print(f"Downloading prices for {len(syms) + len(extra)} symbols...")
     hist = yf.download(syms + extra, period="3y", interval="1d", auto_adjust=True,
                        progress=False, group_by="column", threads=True)
@@ -226,7 +235,8 @@ def fetch_all(universe, yf):
                 t = yf.Ticker(s)
                 info = t.info or {}
                 infos[s] = {k: info.get(k) for k in INFO_KEYS}
-                infos[s]["_earnings"] = fetch_earnings(t) if not s.endswith(".TA") else []
+                is_fund = (info.get("quoteType") or "").upper() in ("ETF", "MUTUALFUND")
+                infos[s]["_earnings"] = fetch_earnings(t) if not (s.endswith(".TA") or is_fund) else []
                 break
             except Exception as e:  # noqa: BLE001
                 print(f"  info {s} attempt {attempt + 1}: {e}", file=sys.stderr)
@@ -235,7 +245,7 @@ def fetch_all(universe, yf):
             infos[s] = {}
         if i % 10 == 9:
             print(f"  fundamentals {i + 1}/{len(syms)}")
-        time.sleep(0.4)
+        time.sleep(0.25)
     return closes, infos
 
 
@@ -502,7 +512,8 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
                                            "news_count": r["news_count"], "neg_headlines": neg_titles,
                                            "risk_level": lvl, "market": regime})
         stocks.append({
-            "symbol": k, "market": r["market"],
+            "symbol": k, "market": r["market"], "group": r.get("group", ""),
+            "type": "etf" if (f.get("quoteType") or "").upper() in ("ETF", "MUTUALFUND") else "stock",
             "name": f.get("shortName") or f.get("longName") or k, "name_he": r["name_he"],
             "sector": f.get("sector") or "", "industry": f.get("industry") or "",
             "currency": f.get("currency") or ("ILA" if r["market"] == "TA" else "USD"),
@@ -527,7 +538,8 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
     changes = history.update(hist, stocks, today)
     HIST.write_text(json.dumps(hist, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     track = {"live": history.evaluate_live(hist, closes, bench_of),
-             "sim": history.simulate(closes, [s["symbol"] for s in stocks], bench_of, price_metrics, exit_plan)}
+             "sim": history.simulate(closes, [s["symbol"] for s in stocks if s["type"] == "stock"], bench_of,
+                                     price_metrics, exit_plan, step=10 if len(stocks) <= 150 else 20)}
     watch = watch_alerts(load_watchlist(), stocks, changes)
     return {"generated_at": datetime.now(timezone.utc).isoformat(timespec="minutes"),
             "changes": changes, "track": track, "watchlist": watch,
@@ -539,15 +551,22 @@ def main():
 
     universe = load_universe()
     closes, infos = fetch_all(universe, yf)
-    news = {}
-    for i, u in enumerate(universe):
+    def news_for(u):
         nm = (infos.get(u["symbol"]) or {}).get("shortName") or u["symbol"].replace(".TA", "")
         nm = re.sub(r"\b(Inc|Corp|Corporation|Ltd|Limited|plc|Co|Holdings?|Group|Class [A-C])\b\.?,?", "", nm).strip(" ,.")
         q = f'"{nm}" stock' if u["market"] == "US" else f'"{nm}" Israel'
-        news[u["symbol"]] = fetch_news(q)
-        time.sleep(0.5)
-        if i % 10 == 9:
-            print(f"  news {i + 1}/{len(universe)}")
+        items = fetch_news(q)
+        time.sleep(0.3)
+        return u["symbol"], items
+
+    # a few parallel requests keep the run short now that the list has hundreds of stocks
+    from concurrent.futures import ThreadPoolExecutor
+    news = {}
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for i, (sym, items) in enumerate(pool.map(news_for, universe)):
+            news[sym] = items
+            if i % 50 == 49:
+                print(f"  news {i + 1}/{len(universe)}")
     market_news = fetch_news("stock market OR Wall Street OR Federal Reserve", days=5, limit=15)
     market_news += fetch_news("Tel Aviv Stock Exchange OR Bank of Israel", days=7, limit=6)
     data = build(universe, closes, infos, news, market_news)
@@ -557,7 +576,8 @@ def main():
     print(f"Wrote {OUT} with {data['count']} stocks")
 
 
-SUMMARY_KEYS = ["symbol", "market", "name", "name_he", "sector", "currency", "price", "upside"]
+SUMMARY_KEYS = ["symbol", "market", "group", "type", "name", "name_he", "sector", "currency", "price", "upside",
+                "market_cap"]
 
 
 def write_split(data: dict) -> None:
@@ -573,8 +593,9 @@ def write_split(data: dict) -> None:
                       "risk": {"level": st["risk"]["level"]},
                       "consult": {"verdict": c["verdict"], "score": c["score"], "summary": c["summary"],
                                   "exit": c.get("exit") or {}},
-                      "metrics": {k: st["metrics"].get(k) for k in ("ret_1m", "ret_6m", "ret_1y")},
-                      "spark": st["spark"][::2]})
+                      "metrics": {k: st["metrics"].get(k) for k in ("ret_1d", "ret_5d", "ret_1m", "ret_3m", "ret_6m",
+                                                                      "ret_1y", "above_ma200", "from_high")},
+                      "spark": st["spark"][::3]})
         fn = st["symbol"] + ".json"
         keep.add(fn)
         (sdir / fn).write_text(json.dumps(st, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")
