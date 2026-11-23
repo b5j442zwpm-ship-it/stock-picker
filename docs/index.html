@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f5f6f8">
 <title>בורר המניות</title>
+<meta name="description" content="בדיקת מניות וקרנות סל בעברית: לקנות עכשיו, לחכות או לא לקנות, עם הסבר.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="בורר המניות">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -143,12 +150,47 @@ dl.gl dt{font-weight:800;margin-top:10px} dl.gl dd{margin:2px 0 0;color:var(--mu
 .hwhy{font-size:13.5px;color:var(--ink);margin-top:2px}
 .hedit{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 .hedit label{display:flex;flex-direction:column;font-size:13px;color:var(--muted);gap:3px}
+/* upgrade: header, index strip, groups, list tools, sparklines, chart */
+.brand{display:flex;align-items:center;gap:10px}
+.brand img{width:36px;height:36px;border-radius:10px}
+.idx{display:flex;gap:6px;overflow-x:auto;margin:0 -16px 12px;padding:2px 16px;scrollbar-width:none}
+.idx::-webkit-scrollbar{display:none}
+.idx div{flex:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 12px;font-size:13px;color:var(--muted);line-height:1.35}
+.idx b{display:block;color:var(--ink);font-size:15px;font-variant-numeric:tabular-nums}
+.cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.cat{display:flex;align-items:center;gap:10px;text-align:start;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:14px;padding:10px 12px;font:inherit;cursor:pointer;min-width:0;transition:border-color .15s,transform .1s}
+.cat:hover{border-color:var(--accent)} .cat:active{transform:scale(.98)}
+.cat .e{font-size:22px;flex:none;line-height:1}
+.cat b{display:block;font-size:14.5px;line-height:1.25;overflow:hidden;text-overflow:ellipsis}
+.cat span.c{font-size:12.5px;color:var(--muted)}
+.cat.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--card))}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.tools .inp{font-size:16px}
+.tools .q{grid-column:1/-1;position:relative}
+select.inp{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:14px 55%,9px 55%;background-size:5px 5px;background-repeat:no-repeat;padding-left:28px;padding-right:10px;text-overflow:ellipsis}
+.cnt{font-size:13px;color:var(--muted);margin:2px 0 4px}
+.spk{flex:none;width:64px;height:28px}
+@media(max-width:380px){.spk{width:48px}}
+.tag{display:inline-block;font-size:11.5px;font-weight:700;border-radius:6px;padding:0 6px;background:var(--soft);color:var(--muted);vertical-align:1px;margin-inline-start:4px}
+.chart{margin:10px 0 2px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 12px 6px}
+.chart svg{display:block;width:100%;height:150px}
+.chart .lg{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);flex-wrap:wrap;gap:4px 10px}
+.acts{display:grid;grid-template-columns:repeat(4,1fr)}
+@media(max-width:420px){.acts{grid-template-columns:1fr 1fr}}
+.btn2{padding:10px 6px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:14px;z-index:20;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.skel{height:14px;border-radius:7px;background:linear-gradient(90deg,var(--soft),var(--line),var(--soft));background-size:200% 100%;animation:sk 1.2s infinite;margin:10px 0}
+@keyframes sk{to{background-position:-200% 0}}
+.totop{position:fixed;bottom:18px;inset-inline-start:16px;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:18px;box-shadow:0 4px 14px rgba(0,0,0,.15);cursor:pointer;display:none;z-index:9}
+.totop.on{display:block}
+body.pgopen .totop{display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <h1>בורר המניות</h1>
+    <div class="brand"><img src="icon.svg" alt=""><h1>בורר המניות</h1></div>
     <div class="muted tiny" id="updated">טוען…</div>
   </div>
   <p class="disc">⚠️ כלי עזר, לא ייעוץ השקעות. הוא בודק עובדות על כל מניה ומסכם אותן, אבל אף אחד לא יודע מה יקרה מחר. <a href="#" onclick="openGlossary();return false">מה כל מושג אומר?</a></p>
@@ -157,7 +199,7 @@ dl.gl dt{font-weight:800;margin-top:10px} dl.gl dd{margin:2px 0 0;color:var(--mu
   <section class="card search">
     <h2>איזו מניה מעניינת אותך?</h2>
     <form class="sq" id="sform" autocomplete="off">
-      <input id="sq" placeholder="למשל: אפל, טבע, NVDA" aria-label="חיפוש מניה" enterkeyhint="search">
+      <input id="sq" placeholder="למשל: אפל, טבע, NVDA, זהב" aria-label="חיפוש מניה" enterkeyhint="search">
       <button class="btn" type="submit">בדוק</button>
     </form>
     <div class="sugg" id="sugg"></div>
@@ -165,7 +207,10 @@ dl.gl dt{font-weight:800;margin-top:10px} dl.gl dd{margin:2px 0 0;color:var(--mu
     <p class="muted tiny" style="margin:8px 0 0">התשובה: <span class="vd v-buy">לקנות עכשיו</span> <span class="vd v-wait">לחכות</span> או <span class="vd v-avoid">לא לקנות</span>, עם הסבר למה.</p>
   </section>
 
-  <section class="card" id="market"></section>
+  <div class="idx" id="idx"></div>
+  <section class="card" id="market"><div class="skel" style="width:60%"></div><div class="skel"></div><div class="skel" style="width:80%"></div></section>
+
+  <section class="card" id="cats"></section>
 
   <div class="tabs" id="tabs" role="tablist"></div>
   <section class="card" id="panel"></section>
@@ -174,6 +219,8 @@ dl.gl dt{font-weight:800;margin-top:10px} dl.gl dd{margin:2px 0 0;color:var(--mu
 </div>
 
 <div class="tbar" id="tbar"></div>
+<button class="totop" id="totop" onclick="scrollTo({top:0,behavior:'smooth'})" aria-label="לראש העמוד">↑</button>
+<div class="toast" id="toast"></div>
 <div class="ov" id="ov"></div>
 <aside class="page" id="pg" aria-live="polite"></aside>
 
@@ -183,7 +230,8 @@ const RISKW=['','רגועה מאוד','רגועה','בינונית','קופצת 
 const RISKS=['','מניה יציבה. בדרך כלל זזה מעט.','מניה די יציבה.','תנודות רגילות: יש ימים של עליות וירידות של כמה אחוזים.','מניה שזזה הרבה. יכולה לרדת 30% ויותר בתקופה קשה.','מניה שזזה חזק מאוד. יכולה לרדת בחצי בתקופה קשה. מתאים רק לכסף שאפשר להרשות לעצמך להפסיד.'];
 const SECT={'Technology':'טכנולוגיה','Financial Services':'פיננסים','Healthcare':'בריאות','Consumer Cyclical':'צריכה','Consumer Defensive':'מוצרי יסוד',
  'Communication Services':'תקשורת ומדיה','Industrials':'תעשייה','Energy':'אנרגיה','Utilities':'חשמל ותשתיות','Real Estate':'נדל"ן','Basic Materials':'חומרי גלם'};
-let showAll=0, D=null, tab='buy', vf='', mf='', W={}, H={}, CMP=[], cache={};
+let showAll=0, showUp=0, D=null, tab='buy', vf='', mf='', gf='', aq='', sortk='best', lim=40, catsOpen=0, W={}, H={}, CMP=[], cache={};
+const SORTS=[['best','מיון: ההמלצה הכי טובה'],['up3m','עלו הכי הרבה ב-3 חודשים'],['day','עלו הכי הרבה היום'],['down','ירדו הכי הרבה היום'],['y1','עלו הכי הרבה בשנה'],['high','הכי קרובות לשיא השנתי'],['risk','הכי רגועות (סיכון נמוך)'],['upside','פוטנציאל לפי אנליסטים'],['cap','החברות הגדולות']];
 try{W=JSON.parse(localStorage.getItem('sp_watch')||'{}')}catch(e){}
 try{H=JSON.parse(localStorage.getItem('sp_hold')||'{}')}catch(e){}
 try{tab=localStorage.getItem('sp_tab')||'buy'}catch(e){}
@@ -198,6 +246,21 @@ const cur=s=>s.currency==='ILA'?'אג׳':s.currency==='USD'?'$':(s.currency||'')
 const nm=s=>s.name_he||s.name;
 const byS=sym=>D.stocks.find(s=>s.symbol===sym);
 const repoLink=(p)=>{const m=location.hostname.match(/^([^.]+)\.github\.io$/);return m?`https://github.com/${m[1]}/${location.pathname.split('/')[1]||'stock-picker'}/${p}`:null};
+const gEmoji=g=>(g||'').split(' ')[0];
+const gName=g=>(g||'').split(' ').slice(1).join(' ')||g||'';
+let _G=null;
+function groups(){
+  if(_G) return _G; const m=new Map();
+  D.stocks.forEach(s=>{if(!s.group)return; if(!m.has(s.group))m.set(s.group,{g:s.group,n:0,b:0}); const x=m.get(s.group); x.n++; if(s.consult.verdict==='buy')x.b++});
+  return _G=[...m.values()];
+}
+function spark(a,w=64,h=28){
+  if(!a||a.length<2) return '';
+  const mn=Math.min(...a),mx=Math.max(...a),r=mx-mn||1,up=a[a.length-1]>=a[0];
+  const pts=a.map((v,i)=>`${(i/(a.length-1)*w).toFixed(1)},${(h-2-(v-mn)/r*(h-4)).toFixed(1)}`).join(' ');
+  return `<svg class="spk" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" style="fill:none;stroke:var(--${up?'pos':'neg'});stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('on'),1800)}
 function saveW(){try{localStorage.setItem('sp_watch',JSON.stringify(W))}catch(e){}}
 function saveH(){try{localStorage.setItem('sp_hold',JSON.stringify(H))}catch(e){}}
 
@@ -264,10 +327,29 @@ function renderMarket(){
    ${(D.market_news||[]).length?`<h3>כותרות מהבורסה</h3><div class="news"><ul>${D.market_news.slice(0,6).map(n=>`<li><a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a> <span class="muted tiny">${esc(n.source)}</span></li>`).join('')}</ul></div><p class="muted tiny">הכותרות באנגלית, מהמקור.</p>`:''}
    </details></div></div>`;
 }
+function renderIdx(){
+  const M=D.market||{}, it=[];
+  const add=(t,o)=>{if(o&&o.last!=null)it.push(`<div>${t}<b>${num(o.last,0)} ${o.ret_1d!=null?`<span class="${cls(o.ret_1d)}" style="font-size:13px">${pct(o.ret_1d,1)}</span>`:''}</b></div>`)};
+  add('S&P 500 (SPY)',M.spy); add('נאסד"ק (QQQ)',M.qqq); add('ת"א 125',M.ta125);
+  if(M.vix!=null) it.push(`<div>מדד הפחד<b>${num(M.vix,1)}</b></div>`);
+  if(M.usdils) it.push(`<div>דולר<b>${num(M.usdils,3)} ₪</b></div>`);
+  if(M.gold) it.push(`<div>זהב (אונקיה)<b>${L('$'+Math.round(M.gold).toLocaleString('he-IL'))}</b></div>`);
+  if(M.oil) it.push(`<div>נפט (חבית)<b>${L('$'+M.oil.toFixed(1))}</b></div>`);
+  $('#idx').innerHTML=it.join('');
+}
+function renderCats(){
+  const G=groups(); if(!G.length){$('#cats').style.display='none';return}
+  const show=catsOpen?G:G.slice(0,6);
+  $('#cats').innerHTML=`<h2>סוגי מניות</h2><p class="muted small" style="margin-top:-4px">${L(D.stocks.length)} מניות וקרנות סל ב-${L(G.length)} קבוצות. בוחרים קבוצה ורואים מה שווה לקנות בה.</p>
+   <div class="cats">${show.map(x=>`<button class="cat ${tab==='all'&&gf===x.g?'on':''}" onclick="openGroup(${G.indexOf(x)})"><span class="e">${gEmoji(x.g)}</span><span style="min-width:0"><b>${esc(gName(x.g))}</b><span class="c">${L(x.n)} · ${x.b?`<span class="pos">${L(x.b)} לקנות</span>`:'אין לקנות היום'}</span></span></button>`).join('')}</div>
+   ${G.length>6?`<button class="btn2 more" onclick="catsOpen=!catsOpen;renderCats()">${catsOpen?'הצג פחות':'הצג את כל '+G.length+' הסוגים'}</button>`:''}`;
+}
+function openGroup(i){gf=groups()[i].g;vf='';mf='';aq='';lim=40;setTab('all');$('#tabs').scrollIntoView({behavior:'smooth',block:'start'})}
+function upList(){return D.stocks.filter(s=>s.metrics.above_ma200&&s.metrics.ret_3m>0.05&&s.consult.verdict!=='avoid').sort((a,b)=>b.metrics.ret_3m-a.metrics.ret_3m)}
 function row(s,extra=''){
-  const c=s.consult;
-  return `<div class="row" onclick="openStock('${esc(s.symbol)}')"><div class="nm"><b>${esc(nm(s))}</b><span>${esc(s.symbol)} · ${esc(SECT[s.sector]||'')} · ${num(s.price)} ${cur(s)}</span>${extra?`<div style="font-size:13px;color:var(--muted)">${extra}</div>`:''}</div>
-   <div class="side"><span class="vd v-${c.verdict}">${VERD[c.verdict]}</span><div style="margin-top:3px">${RISKW[s.risk.level]}</div></div></div>`;
+  const c=s.consult, d=s.metrics&&s.metrics.ret_1d;
+  return `<div class="row" onclick="openStock('${esc(s.symbol)}')"><div class="nm"><b>${esc(nm(s))}${s.type==='etf'?'<span class="tag">קרן סל</span>':''}</b><span>${esc(s.symbol)} · ${num(s.price)} ${cur(s)}${d!=null?` · היום <span class="${cls(d)}">${pct(d,1)}</span>`:''}</span>${extra?`<div style="font-size:13px;color:var(--muted)">${extra}</div>`:''}</div>
+   ${spark(s.spark)}<div class="side"><span class="vd v-${c.verdict}">${VERD[c.verdict]}</span><div style="margin-top:3px">${RISKW[s.risk.level]}</div></div></div>`;
 }
 function alertsFor(sym){
   const s=byS(sym), w=W[sym]||{}, out=[]; if(!s) return out;
@@ -280,10 +362,10 @@ function alertsFor(sym){
 }
 function renderTabs(){
   const nb=D.stocks.filter(s=>s.consult.verdict==='buy').length, nw=Object.keys(W).length, nc=(D.changes||[]).length;
-  const T=[['buy',`🟢 שווה לקנות עכשיו <span class="n">${nb}</span>`],['watch',`★ המעקב שלי <span class="n">${nw}</span>`],['mine',`💼 המניות שלי <span class="n">${Object.keys(H).length}</span>`],['changes',`🔁 מה השתנה <span class="n">${nc}</span>`],['all',`📋 כל המניות <span class="n">${D.stocks.length}</span>`]];
+  const T=[['buy',`🟢 שווה לקנות עכשיו <span class="n">${nb}</span>`],['up',`🚀 במגמת עלייה <span class="n">${upList().length}</span>`],['watch',`★ המעקב שלי <span class="n">${nw}</span>`],['mine',`💼 המניות שלי <span class="n">${Object.keys(H).length}</span>`],['changes',`🔁 מה השתנה <span class="n">${nc}</span>`],['all',`📋 כל המניות <span class="n">${D.stocks.length}</span>`]];
   $('#tabs').innerHTML=T.map(([k,t])=>`<button class="tab ${tab===k?'on':''}" role="tab" onclick="setTab('${k}')">${t}</button>`).join('');
 }
-function setTab(k){tab=k;try{localStorage.setItem('sp_tab',k)}catch(e){};renderTabs();renderPanel()}
+function setTab(k){tab=k;try{localStorage.setItem('sp_tab',k)}catch(e){};renderTabs();renderPanel();renderCats()}
 function renderPanel(){
   const P=$('#panel');
   if(tab==='buy'){
@@ -291,6 +373,11 @@ function renderPanel(){
     P.innerHTML=`<h2>שווה לקנות עכשיו</h2><p class="muted small" style="margin-top:-4px">מניות שעברו את רוב הבדיקות: החברה במצב טוב, המחיר בעלייה, ואין סיבה לחכות. מסודר מהחזקה ביותר.</p>
      <div class="list">${b.slice(0,showAll?999:8).map(s=>row(s,`<span>יעד רווח <span class="pos">${pct(s.consult.exit.target_pct)}</span> · עצירת הפסד <span class="neg">${pct(s.consult.exit.stop_pct)}</span></span>`)).join('')||'<div class="empty">היום אין מניות שעברו את כל הבדיקות. זה קורה כשהבורסה חלשה, ואז עדיף לחכות.</div>'}</div>
      ${b.length>8&&!showAll?`<button class="btn2 more" onclick="showAll=1;renderPanel()">הצג את כל ${b.length}</button>`:''}`;
+  } else if(tab==='up'){
+    const u=upList();
+    P.innerHTML=`<h2>🚀 במגמת עלייה</h2><p class="muted small" style="margin-top:-4px">מניות וקרנות שעולות כבר כמה חודשים (מעל הממוצע של 200 יום), מסודרות לפי העלייה ב-3 החודשים האחרונים. בלי אלה שהבדיקה אומרת עליהן "לא לקנות". עלייה בעבר לא מבטיחה שהיא תימשך.</p>
+     <div class="list">${u.slice(0,showUp?999:15).map(s=>row(s,`<span>3 חודשים <span class="pos">${pct(s.metrics.ret_3m)}</span> · חודש <span class="${cls(s.metrics.ret_1m)}">${pct(s.metrics.ret_1m)}</span>${s.metrics.from_high!=null&&s.metrics.from_high>-0.03?' · 🔝 ליד השיא השנתי':''}</span>`)).join('')||'<div class="empty">כרגע אין מניות במגמת עלייה ברורה.</div>'}</div>
+     ${u.length>15&&!showUp?`<button class="btn2 more" onclick="showUp=1;renderPanel()">הצג את כל ${u.length}</button>`:''}`;
   } else if(tab==='watch'){
     const syms=Object.keys(W).filter(byS);
     const wf=repoLink('actions/workflows/watch.yml');
@@ -304,14 +391,33 @@ function renderPanel(){
     P.innerHTML=`<h2>מה השתנה מאתמול</h2>${ch.length?`<div class="list">${[...ch].sort((a,b)=>VORD[b.to]-VORD[a.to]).map(c=>{const s=byS(c.symbol);return s?row(s,`<span>היה: ${VERD[c.from]}</span>`):''}).join('')}</div>`
      :`<div class="empty">אין שינויים בהמלצות מאז הבדיקה הקודמת.</div>`}<p class="muted tiny">הבדיקה רצה כל לילה אחרי סגירת הבורסה בארה"ב. כל בוקר נשלח סיכום במייל ובאפליקציית GitHub.</p>`;
   } else {
-    const q=($('#aq')&&$('#aq').value||'').trim().toLowerCase();
-    let r=D.stocks.filter(s=>(!vf||s.consult.verdict===vf)&&(!mf||s.market===mf)&&(!q||(s.symbol+' '+s.name+' '+s.name_he).toLowerCase().includes(q)));
-    r.sort((a,b)=>(VORD[b.consult.verdict]*1000+b.consult.score)-(VORD[a.consult.verdict]*1000+a.consult.score));
-    const ch=(k,v,t)=>`<button class="chip ${(k==='v'?vf:mf)===v?'on':''}" onclick="${k==='v'?'vf':'mf'}='${v}';renderPanel()">${t}</button>`;
-    P.innerHTML=`<h2>כל המניות</h2><div class="filters">${ch('v','','הכל')}${ch('v','buy','🟢 לקנות')}${ch('v','wait','🟡 לחכות')}${ch('v','avoid','🔴 לא לקנות')}</div>
-     <div class="filters">${ch('m','','כל הבורסות')}${ch('m','US','🇺🇸 ארה"ב')}${ch('m','TA','🇮🇱 תל אביב')}</div>
-     <div class="list">${r.map(s=>row(s,`<span>בשנה: <span class="${cls(s.metrics.ret_1y)}">${pct(s.metrics.ret_1y)}</span></span>`)).join('')||'<div class="empty">אין מניות שמתאימות לסינון</div>'}</div>`;
+    const G=groups();
+    const ch=(k,v,t)=>`<button class="chip ${(k==='v'?vf:mf)===v?'on':''}" onclick="${k==='v'?'vf':'mf'}='${v}';lim=40;renderPanel()">${t}</button>`;
+    P.innerHTML=`<h2>${gf?gEmoji(gf)+' '+esc(gName(gf)):'כל המניות'}</h2>
+     <div class="tools"><div class="q"><input class="inp" id="aq" type="search" placeholder="חיפוש ברשימה: שם או סימול" value="${esc(aq)}" oninput="aq=this.value;lim=40;renderAllList()" enterkeyhint="search"></div>
+      <select class="inp" aria-label="סוג מניות" onchange="gf=this.value===''?'':groups()[+this.value].g;lim=40;renderPanel();renderCats()"><option value="">כל הסוגים</option>${G.map((x,i)=>`<option value="${i}" ${gf===x.g?'selected':''}>${esc(x.g)} (${x.n})</option>`).join('')}</select>
+      <select class="inp" aria-label="מיון" onchange="sortk=this.value;lim=40;renderAllList()">${SORTS.map(([k,t])=>`<option value="${k}" ${sortk===k?'selected':''}>${t}</option>`).join('')}</select></div>
+     <div class="filters">${ch('v','','הכל')}${ch('v','buy','🟢 לקנות')}${ch('v','wait','🟡 לחכות')}${ch('v','avoid','🔴 לא לקנות')}</div>
+     <div class="filters">${ch('m','','הכל')}${ch('m','US','🇺🇸 מניות ארה"ב')}${ch('m','TA','🇮🇱 תל אביב')}${ch('m','etf','📊 קרנות סל')}</div>
+     <div id="alist"></div>`;
+    renderAllList();
   }
+}
+function renderAllList(){
+  const q=norm(aq), usd=(D.market||{}).usdils||3.7, M=k=>s=>s.metrics[k]??-9;
+  const r=D.stocks.filter(s=>(!vf||s.consult.verdict===vf)&&(!gf||s.group===gf)
+    &&(!mf||(mf==='etf'?s.type==='etf':s.market===mf&&s.type!=='etf'))&&(!q||norm(s.symbol+' '+s.name+' '+s.name_he).includes(q)));
+  const best=s=>VORD[s.consult.verdict]*1000+s.consult.score;
+  const key={best,up3m:M('ret_3m'),day:M('ret_1d'),down:s=>-(s.metrics.ret_1d??9),y1:M('ret_1y'),high:M('from_high'),
+    risk:s=>-s.risk.level*10000+best(s),upside:s=>s.upside??-9,cap:s=>(s.market_cap||0)/(s.market==='TA'?usd:1)}[sortk]||best;
+  r.sort((a,b)=>key(b)-key(a));
+  const pc=(k,t)=>s=>`<span>${t} <span class="${cls(s.metrics[k])}">${pct(s.metrics[k],1)}</span></span>`;
+  const ex={up3m:pc('ret_3m','3 חודשים'),day:pc('ret_1d','היום'),down:pc('ret_1d','היום'),high:s=>`<span>${s.metrics.from_high!=null?(s.metrics.from_high>-0.005?'🔝 בשיא השנתי':pct(s.metrics.from_high,1)+' מהשיא השנתי'):''}</span>`,
+    upside:s=>`<span>יעד אנליסטים: <span class="${cls(s.upside)}">${pct(s.upside)}</span></span>`,
+    cap:s=>s.market_cap?`<span>שווי ${L((s.market==='TA'?'₪':'$')+(s.market_cap/1e9).toFixed(s.market_cap<1e10?1:0)+'B')}</span>`:''}[sortk]||pc('ret_1y','בשנה');
+  $('#alist').innerHTML=`<div class="cnt">${r.length===D.stocks.length?'':L(r.length)+' מתוך '}${L(D.stocks.length)}</div>
+   <div class="list">${r.slice(0,lim).map(s=>row(s,ex(s))).join('')||'<div class="empty">אין מניות שמתאימות לחיפוש או לסינון.</div>'}</div>
+   ${r.length>lim?`<button class="btn2 more" onclick="lim+=60;renderAllList()">הצג עוד (${r.length-lim} נוספות)</button>`:''}`;
 }
 function renderMine(P){
   const {rows,tot}=holdRows();
@@ -357,7 +463,7 @@ function boughtNow(e,sym){
   const today=new Date().toISOString().slice(0,10), o=H[sym];
   if(o){const nq=o.qty+qty;o.cost=o.cost?(o.cost*o.qty+price*qty)/nq:price;o.qty=nq;o.peak=Math.max(o.peak||0,price);(o.buys=o.buys||[]).push({d:today,qty,price})}
   else H[sym]={qty,cost:price,added:today,bought:today,peak:price,buys:[{d:today,qty,price}],v0:s&&s.consult.verdict};
-  saveH(); renderTabs(); if(tab==='mine')renderPanel(); openStock(sym);
+  saveH(); renderTabs(); if(tab==='mine')renderPanel(); openStock(sym); toast('✔ נשמר ב"המניות שלי"');
 }
 function trackPeaks(){
   // the data updates once a day; remember the highest price seen since each purchase
@@ -444,18 +550,50 @@ async function detail(sym){
   const r=await fetch('s/'+encodeURIComponent(sym)+'.json?'+(D.generated_at||'')); if(!r.ok) throw new Error(r.status);
   return cache[sym]=await r.json();
 }
-function showPage(html,wide){const p=$('#pg');p.innerHTML=html;p.classList.toggle('wide',!!wide);p.classList.add('on');$('#ov').classList.add('on');document.body.style.overflow='hidden';document.body.classList.add('pgopen')}
-function closePage(){$('#pg').classList.remove('on');$('#ov').classList.remove('on');document.body.style.overflow='';document.body.classList.remove('pgopen');try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
+function showPage(html,wide,hash){
+  const p=$('#pg'), was=p.classList.contains('on');
+  p.innerHTML=html;p.classList.toggle('wide',!!wide);p.classList.add('on');$('#ov').classList.add('on');document.body.style.overflow='hidden';document.body.classList.add('pgopen');
+  // the phone's back button closes the page instead of leaving the site
+  const url=location.pathname+location.search+(hash?'#'+encodeURIComponent(hash):'');
+  try{if(!was&&!(history.state&&history.state.pg))history.pushState({pg:1},'',url);else history.replaceState({pg:1},'',url)}catch(e){}
+}
+function hidePage(){$('#pg').classList.remove('on');$('#ov').classList.remove('on');document.body.style.overflow='';document.body.classList.remove('pgopen');$('#pg').dataset.sym=''}
+function closePage(){if(history.state&&history.state.pg){history.back();return} hidePage();try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}}
+window.addEventListener('popstate',e=>{
+  const h=decodeURIComponent(location.hash.slice(1));
+  if(e.state&&e.state.pg&&h&&D&&byS(h)) openStock(h);
+  else {hidePage(); if(location.hash)try{history.replaceState(null,'',location.pathname+location.search)}catch(_){}}
+});
+function shareStock(sym){
+  const s=byS(sym), url=location.origin+location.pathname+'#'+encodeURIComponent(sym), t=`${nm(s)}: ${VERD[s.consult.verdict]} (בורר המניות)`;
+  if(navigator.share) navigator.share({title:t,text:t,url}).catch(()=>{});
+  else if(navigator.clipboard) navigator.clipboard.writeText(url).then(()=>toast('הקישור הועתק'),()=>{});
+}
+function chartHTML(s){
+  const a=s.spark||[]; if(a.length<5) return '';
+  const ex=s.consult.exit||{}, W=320, Hh=150, pad=8;
+  let lo=Math.min(...a), hi=Math.max(...a);
+  const lines=[]; if(ex.target)lines.push([ex.target,'pos']); if(ex.stop)lines.push([ex.stop,'neg']);
+  lines.forEach(([v])=>{lo=Math.min(lo,v);hi=Math.max(hi,v)});
+  const r=hi-lo||1, y=v=>(pad+(hi-v)/r*(Hh-2*pad)).toFixed(1), x=i=>(i/(a.length-1)*W).toFixed(1);
+  const pts=a.map((v,i)=>x(i)+','+y(v)).join(' '), ch=a[a.length-1]/a[0]-1, col=ch>=0?'var(--pos)':'var(--neg)';
+  return `<div class="chart"><div class="lg"><span><b style="color:var(--ink)">שנה אחרונה</b> <span class="${cls(ch)}">${pct(ch)}</span></span><span>גבוה ${num(Math.max(...a))} · נמוך ${num(Math.min(...a))}</span></div>
+   <svg viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none" role="img" aria-label="גרף המחיר בשנה האחרונה">
+    <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:${col};stop-opacity:.25"/><stop offset="1" style="stop-color:${col};stop-opacity:0"/></linearGradient></defs>
+    <polygon points="0,${Hh} ${pts} ${W},${Hh}" fill="url(#cg)"/>
+    ${lines.map(([v,c])=>`<line x1="0" x2="${W}" y1="${y(v)}" y2="${y(v)}" style="stroke:var(--${c});stroke-width:1.2;stroke-dasharray:5 4" vector-effect="non-scaling-stroke"/>`).join('')}
+    <polyline points="${pts}" style="fill:none;stroke:${col};stroke-width:2.2;stroke-linejoin:round" vector-effect="non-scaling-stroke"/>
+   </svg>${lines.length?`<div class="lg"><span><span class="pos">┄</span> יעד רווח ${num(ex.target)}</span><span><span class="neg">┄</span> עצירת הפסד ${num(ex.stop)}</span></div>`:''}</div>`;
+}
 async function openStock(sym){
   const s0=byS(sym); if(!s0) return;
-  try{history.replaceState(null,'',location.pathname+location.search+'#'+encodeURIComponent(sym))}catch(e){}
-  if(!$('#pg').classList.contains('on')||$('#pg').dataset.sym!==sym) showPage(`<div class="pbar"><h2 style="margin:0">${esc(nm(s0))}</h2><button class="x" onclick="closePage()" aria-label="סגירה">✕</button></div><div class="spin">טוען את הבדיקה…</div>`);
+  if(!$('#pg').classList.contains('on')||$('#pg').dataset.sym!==sym) showPage(`<div class="pbar"><h2 style="margin:0">${esc(nm(s0))}</h2><button class="x" onclick="closePage()" aria-label="סגירה">✕</button></div><div class="skel" style="height:90px;border-radius:16px"></div><div class="skel" style="height:150px;border-radius:16px"></div><div class="skel"></div><div class="skel" style="width:70%"></div>`,0,sym);
   $('#pg').dataset.sym=sym;
   let s; try{s=await detail(sym)}catch(e){$('#pg .spin').textContent='לא הצלחתי לטעון. נסה שוב בעוד רגע.';return}
   if($('#pg').dataset.sym!==sym) return;
   if(W[sym]){W[sym].seen=s.consult.verdict;saveW()}
   const keep=$('#pg').scrollTop;
-  showPage(stockHTML(s)); $('#pg').scrollTop=keep; renderTabs(); if(tab==='watch') renderPanel();
+  showPage(stockHTML(s),0,sym); $('#pg').scrollTop=keep; renderTabs(); if(tab==='watch') renderPanel();
 }
 function stockHTML(s){
   const c=s.consult, v=c.verdict, ex=c.exit||{}, m=s.metrics;
@@ -468,11 +606,13 @@ function stockHTML(s){
   const lvl=s.risk.level;
   const checks=c.checks.map(k=>`<li><span class="ic ${k.status}">${{good:'✓',ok:'!',bad:'✕',na:'?'}[k.status]}</span><div><b>${esc(k.name)}</b><span>${esc(k.plain)}</span><div class="muted tiny" style="margin-top:2px">${esc(k.text)}</div></div></li>`).join('');
   const f=s.fund||{}, mt=(a,b)=>`<div><span class="muted">${a}</span><b>${b}</b></div>`;
-  return `<div class="pbar"><div><h2 style="margin:0;font-size:24px">${esc(nm(s))}</h2><div class="muted small">${esc(s.symbol)} · ${esc(SECT[s.sector]||s.sector||'')} · מחיר ${num(s.price)} ${cur(s)}</div></div><button class="x" onclick="closePage()" aria-label="סגירה">✕</button></div>
-   <div class="verdict vb-${v}"><div class="small" style="opacity:.85">ההמלצה של הכלי</div><div class="big">${VICON[v]} ${VERD[v]}</div><p>${esc(c.summary)}</p></div>
+  return `<div class="pbar"><div><h2 style="margin:0;font-size:24px">${esc(nm(s))}</h2><div class="muted small">${esc(s.symbol)}${s.type==='etf'?'<span class="tag">קרן סל</span>':''} · ${esc(s.group?gName(s.group):(SECT[s.sector]||s.sector||''))} · מחיר ${num(s.price)} ${cur(s)}${s.metrics.ret_1d!=null?` · היום <span class="${cls(s.metrics.ret_1d)}">${pct(s.metrics.ret_1d,1)}</span>`:''}</div></div><button class="x" onclick="closePage()" aria-label="סגירה">✕</button></div>
+   <div class="verdict vb-${v}"><div class="small" style="opacity:.85">ההמלצה של הכלי</div><div class="big">${VICON[v]} ${VERD[v]}</div><p>${esc(c.summary)}</p>${s.type==='etf'?'<p class="small" style="opacity:.85">זו קרן סל: סל של הרבה מניות. אין לה דוחות של חברה אחת, לכן הבדיקה נשענת בעיקר על המגמה, התזמון והסיכון.</p>':''}</div>
+   ${chartHTML(s)}
    <div class="acts"><button class="btn2 ${W[s.symbol]?'on':''}" onclick="toggleWatch('${esc(s.symbol)}')">${W[s.symbol]?'★ במעקב':'☆ לעקוב'}</button>
      <button class="btn2 ${CMP.includes(s.symbol)?'on':''}" onclick="toggleCmp('${esc(s.symbol)}')">${CMP.includes(s.symbol)?'✓ בהשוואה':'⇄ להשוות'}</button>
-     <button class="btn2" onclick="$('#buyf').hidden=!$('#buyf').hidden;if(!$('#buyf').hidden)$('#bqty').focus()">🛒 קניתי</button></div>
+     <button class="btn2" onclick="$('#buyf').hidden=!$('#buyf').hidden;if(!$('#buyf').hidden)$('#bqty').focus()">🛒 קניתי</button>
+     <button class="btn2" onclick="shareStock('${esc(s.symbol)}')">📤 שיתוף</button></div>
    <form id="buyf" class="card" hidden style="margin:10px 0 0" onsubmit="boughtNow(event,'${esc(s.symbol)}')" autocomplete="off">
      <h3 style="margin-top:0">${H[s.symbol]?'קנית עוד? הכלי יצרף ויחשב מחיר ממוצע':'קנית את המניה? מכאן הכלי עוקב אחריה בשבילך'}</h3>
      <div class="hedit"><label>כמה יחידות קנית<input class="inp" id="bqty" type="number" inputmode="decimal" step="any" min="0" required></label>
@@ -499,14 +639,14 @@ function stockHTML(s){
      <p class="muted tiny">ציון כולל ${L(c.score)} (מ-100- עד 100+), ביטחון ${esc(c.confidence)}.</p></details>
    <p class="muted tiny" style="margin-top:14px">נכון לנתוני ${new Date(D.generated_at).toLocaleDateString('he-IL')}. לא ייעוץ השקעות. ההחלטה והאחריות שלך.</p>`;
 }
-function toggleWatch(sym){const s=byS(sym);if(W[sym])delete W[sym];else W[sym]={target:null,seen:s&&s.consult.verdict};saveW();renderTabs();if(tab==='watch')renderPanel();openStock(sym)}
+function toggleWatch(sym){const s=byS(sym);if(W[sym])delete W[sym];else W[sym]={target:null,seen:s&&s.consult.verdict};saveW();toast(W[sym]?'★ נוסף למעקב':'הוסר מהמעקב');renderTabs();if(tab==='watch')renderPanel();openStock(sym)}
 function toggleCmp(sym){const i=CMP.indexOf(sym);if(i>=0)CMP.splice(i,1);else{if(CMP.length>=3)CMP.shift();CMP.push(sym)};renderTbar();openStock(sym)}
 function renderTbar(){
   const b=$('#tbar');b.classList.toggle('on',CMP.length>0);
   b.innerHTML=`<span>להשוואה: ${CMP.map(x=>esc(nm(byS(x)))).join(', ')}</span>${CMP.length>=2?'<button style="background:var(--accent);color:#fff" onclick="openCompare()">השווה</button>':'<span style="opacity:.7;flex:none">בחר עוד מניה</span>'}<button style="background:transparent;color:inherit" onclick="CMP=[];renderTbar()" aria-label="ניקוי">✕</button>`;
 }
 async function openCompare(){
-  showPage(`<div class="pbar"><h2 style="margin:0">השוואה</h2><button class="x" onclick="closePage()">✕</button></div><div class="spin">טוען…</div>`,true);
+  showPage(`<div class="pbar"><h2 style="margin:0">השוואה</h2><button class="x" onclick="closePage()">✕</button></div><div class="spin">טוען…</div>`,true,'');
   $('#pg').dataset.sym='';
   let S; try{S=await Promise.all(CMP.map(detail))}catch(e){$('#pg .spin').textContent='לא הצלחתי לטעון.';return}
   const best=[...S].sort((a,b)=>(VORD[b.consult.verdict]*1000+b.consult.score)-(VORD[a.consult.verdict]*1000+a.consult.score))[0];
@@ -535,6 +675,8 @@ function openGlossary(){
    <dt>מגמה</dt><dd>הכיוון של המחיר בחודשים האחרונים: עולה, יורד או בלי כיוון.</dd>
    <dt>מכפיל רווח</dt><dd>כמה שנים של רווח אתה משלם במחיר המניה. נמוך פירושו זול, גבוה פירושו יקר.</dd>
    <dt>אנליסטים</dt><dd>מומחים בבנקים ובבתי השקעות שעוקבים אחרי החברה ונותנים המלצה ומחיר יעד.</dd>
+   <dt>קרן סל (ETF)</dt><dd>מוצר שקונים כמו מניה, אבל הוא סל של הרבה מניות (למשל כל 500 החברות הגדולות בארה"ב) או של זהב ואג"ח. פיזור מובנה, ולכן בדרך כלל פחות מסוכן ממניה בודדת.</dd>
+   <dt>במגמת עלייה</dt><dd>מניה שהמחיר שלה מעל הממוצע של 200 הימים האחרונים ועלה בחודשים האחרונים. זה לא מבטיח שתמשיך לעלות.</dd>
    <dt>מדד (S&P 500, ת"א 125)</dt><dd>סל של הרבה מניות גדולות. משמש כדי לדעת מה מצב הבורסה כולה.</dd>
    <dt>מדד הפחד (VIX)</dt><dd>מודד כמה המשקיעים לחוצים. מספר גבוה פירושו פחד ותנודות חזקות.</dd>
    <dt>לקנות בהדרגה</dt><dd>במקום לקנות בבת אחת, קונים בכמה פעמים לאורך כמה שבועות. ככה לא נתפסים בשיא.</dd>
@@ -544,6 +686,7 @@ function openGlossary(){
 }
 
 /* ---------- boot ---------- */
+addEventListener('scroll',()=>$('#totop').classList.toggle('on',scrollY>900),{passive:true});
 $('#ov').onclick=closePage; document.addEventListener('keydown',e=>{if(e.key==='Escape')closePage()});
 $('#sform').onsubmit=submitSearch; $('#sq').addEventListener('input',suggest);
 document.addEventListener('click',e=>{if(!e.target.closest('.search'))$('#sugg').classList.remove('on')});
@@ -552,7 +695,7 @@ fetch('data.json?'+Date.now()).then(r=>{if(!r.ok)throw new Error(r.status);retur
   $('#updated').textContent=`עודכן ${dt.toLocaleString('he-IL',{weekday:'long',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'})}`;
   if(d.synthetic)$('#warn').innerHTML+='<div class="warnbox">נתוני הדגמה אקראיים, לא נתוני אמת.</div>';
   if((Date.now()-dt)/864e5>4)$('#warn').innerHTML+='<div class="warnbox">הנתונים לא עודכנו כמה ימים. ייתכן שהעדכון האוטומטי נכשל.</div>';
-  trackPeaks(); renderMarket(); renderTabs(); renderPanel(); renderTrack(); renderTbar();
+  trackPeaks(); renderIdx(); renderMarket(); renderCats(); renderTabs(); renderPanel(); renderTrack(); renderTbar();
   const h=decodeURIComponent(location.hash.slice(1)); if(h&&byS(h)) openStock(h);
 }).catch(e=>{$('#updated').textContent='לא הצלחתי לטעון את הנתונים. נסה לרענן.'});
 </script>

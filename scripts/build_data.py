@@ -371,6 +371,7 @@ def market_regime(closes: pd.DataFrame, market_news: list[dict]) -> dict:
             return None
         return {"last": round(float(s.iloc[-1]), 2), "ma200": round(float(s.iloc[-200:].mean()), 2),
                 "above_ma200": bool(s.iloc[-1] > s.iloc[-200:].mean()),
+                "ret_1d": float(s.iloc[-1] / s.iloc[-2] - 1),
                 "ret_1m": float(s.iloc[-1] / s.iloc[-22] - 1), "ret_3m": float(s.iloc[-1] / s.iloc[-64] - 1),
                 "dd": float(s.iloc[-1] / s.iloc[-252:].max() - 1)}
 
@@ -511,9 +512,12 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
         consultation = consult(r["m"], f, {**ectx, "upside": r["upside"], "news_score": r["news_raw"],
                                            "news_count": r["news_count"], "neg_headlines": neg_titles,
                                            "risk_level": lvl, "market": regime})
+        is_etf = (f.get("quoteType") or "").upper() in ("ETF", "MUTUALFUND")
+        if is_etf:  # a fund is not a company: keep the wording right
+            consultation["summary"] = consultation["summary"].replace("חברה טובה", "קרן טובה").replace("חברה במצב טוב", "קרן במצב טוב")
         stocks.append({
             "symbol": k, "market": r["market"], "group": r.get("group", ""),
-            "type": "etf" if (f.get("quoteType") or "").upper() in ("ETF", "MUTUALFUND") else "stock",
+            "type": "etf" if is_etf else "stock",
             "name": f.get("shortName") or f.get("longName") or k, "name_he": r["name_he"],
             "sector": f.get("sector") or "", "industry": f.get("industry") or "",
             "currency": f.get("currency") or ("ILA" if r["market"] == "TA" else "USD"),
