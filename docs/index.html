@@ -208,7 +208,8 @@ function holdPlan(s,h){
   // stop / target for this holding. Custom values win. Otherwise: from the buy price, and once in profit the stop trails today's stop.
   const ex=s.consult.exit||{}, sp=ex.stop_pct??-0.08, tp=ex.target_pct??0.15, p=s.price, c=h.cost;
   let stop=h.stop, target=h.target, auto={stop:!h.stop,target:!h.target};
-  if(!stop) stop=c?(p>c&&ex.stop?Math.max(ex.stop,c*(1+sp)):c*(1+sp)):null;
+  const pk=Math.max(h.peak||0,p);
+  if(!stop) stop=c?(pk>c?Math.max(ex.stop||0,c*(1+sp),pk*(1+sp)):c*(1+sp)):null;
   if(!target) target=c?c*(1+tp):null;
   return {stop,target,auto};
 }
@@ -325,7 +326,7 @@ function renderMine(P){
     const s=r.s,h=r.h,g=h.cost?s.price/h.cost-1:null,a=r.adv;
     return `<div class="row" onclick="openStock('${esc(s.symbol)}')"><div class="nm"><b>${esc(nm(s))}</b>
       <span>${esc(s.symbol)} · ${num(h.qty,4)} יחידות · שווי ${num(h.qty*s.price,0)} ${cur(s)}${g!=null?` · <span class="${cls(g)}">${pct(g,1)}</span>`:''} · ${L(Math.round(r.w*100)+'%')} מהתיק</span>
-      <div class="hwhy">${esc(a.title)}</div></div>
+      <div class="hwhy">${esc(a.title)}</div>${h.v0&&h.v0!==s.consult.verdict?`<div class="alert">🔔 ההמלצה השתנתה מאז שקנית</div>`:''}</div>
       <div class="side"><span class="vd v-${a.act}">${ACT[a.act]}</span><div style="margin-top:3px">היום: ${VERD[s.consult.verdict]}</div></div></div>`}).join('');
   const opts=D.stocks.map(s=>`<option value="${esc(s.symbol)}">${esc(nm(s))}</option>`).join('');
   P.innerHTML=`<h2>💼 המניות שלי</h2><p class="muted small" style="margin-top:-4px">רושמים מה יש לך, וכל יום הכלי אומר לכל מניה: <span class="vd v-add">לקנות עוד</span> <span class="vd v-sell">למכור</span> או <span class="vd v-hold">לחכות</span>. לחיצה על מניה מראה למה.</p>
@@ -350,11 +351,36 @@ function addHold(e){
   else H[s.symbol]={qty,cost,added:new Date().toISOString().slice(0,10)};
   saveH(); renderTabs(); renderPanel();
 }
+function boughtNow(e,sym){
+  e.preventDefault(); const qty=+$('#bqty').value, price=+$('#bprice').value, s=byS(sym);
+  if(!(qty>0&&price>0)) return;
+  const today=new Date().toISOString().slice(0,10), o=H[sym];
+  if(o){const nq=o.qty+qty;o.cost=o.cost?(o.cost*o.qty+price*qty)/nq:price;o.qty=nq;o.peak=Math.max(o.peak||0,price);(o.buys=o.buys||[]).push({d:today,qty,price})}
+  else H[sym]={qty,cost:price,added:today,bought:today,peak:price,buys:[{d:today,qty,price}],v0:s&&s.consult.verdict};
+  saveH(); renderTabs(); if(tab==='mine')renderPanel(); openStock(sym);
+}
+function trackPeaks(){
+  // the data updates once a day; remember the highest price seen since each purchase
+  let ch=0; for(const sym in H){const s=byS(sym),h=H[sym]; if(s&&h.cost&&s.price>(h.peak||0)){h.peak=s.price;ch=1}} if(ch)saveH();
+}
 function delHold(sym){delete H[sym];saveH();renderTabs();if(tab==='mine')renderPanel();if($('#pg').classList.contains('on')&&$('#pg').dataset.sym===sym)openStock(sym)}
 function editHold(sym,k,val){
   if(!H[sym]){H[sym]={qty:0,cost:null,added:new Date().toISOString().slice(0,10)}}
   const x=val===''?null:+val; if(k==='qty'){if(!(x>0))return delHold(sym);H[sym].qty=x}else H[sym][k]=x>0?x:null;
   saveH(); renderTabs(); if(tab==='mine')renderPanel(); openStock(sym);
+}
+function sinceHTML(s,h){
+  const d0=h.bought||h.added; if(!h.cost||!d0) return '';
+  const days=Math.max(0,Math.round((Date.now()-new Date(d0))/864e5)), g=s.price/h.cost-1, pk=Math.max(h.peak||0,s.price), fromPk=s.price/pk-1;
+  const mkt=s.market==='TA'?(D.market.ta125||{}):(D.market.spy||{});
+  const buys=(h.buys||[]).map(b=>`<li>${new Date(b.d).toLocaleDateString('he-IL')}: ${num(b.qty,4)} יחידות ב-${num(b.price)}</li>`).join('');
+  return `<h3>מאז שקנית${days?` (לפני ${L(days)} ימים)`:' (היום)'}</h3>
+   <div class="mt"><div><span class="muted">שינוי מאז הקנייה</span><b class="${cls(g)}">${pct(g,1)}</b></div>
+    <div><span class="muted">רווח / הפסד</span><b class="${cls(g)}">${L((g>=0?'+':'-')+num(Math.abs(h.qty*(s.price-h.cost)),0).replace(/[⁦⁩]/g,''))} ${cur(s)}</b></div>
+    <div><span class="muted">השיא מאז הקנייה</span><b>${num(pk)}</b>${fromPk<-0.005?`<span class="neg tiny">${pct(fromPk,1)} מהשיא</span>`:''}</div></div>
+   ${h.v0&&h.v0!==s.consult.verdict?`<p class="small">🔔 כשקנית ההמלצה הייתה "${VERD[h.v0]}", ועכשיו היא "${VERD[s.consult.verdict]}".</p>`:''}
+   ${buys?`<details style="margin-top:8px"><summary>הקניות שלך</summary><ul class="plain small">${buys}</ul></details>`:''}
+   <p class="muted tiny">הכלי בודק את המניה מחדש כל יום (12 הבדיקות) ומעדכן כאן מתי למכור או לקנות עוד. העצירה עולה עם השיא כדי לשמור על הרווח.</p>`;
 }
 function holdHTML(s){
   const h=H[s.symbol];
@@ -364,6 +390,7 @@ function holdHTML(s){
   return `<section class="card" style="margin-top:12px"><h2>💼 המניה שלך</h2>
    <div class="verdict vb-${a.act}" style="margin-top:4px"><div class="small" style="opacity:.85">מה לעשות עם מה שיש לך</div><div class="big">${AICON[a.act]} ${esc(a.title)}</div></div>
    <ul class="plain">${a.why.filter(Boolean).map(w=>`<li>${esc(w)}</li>`).join('')}</ul>
+   ${sinceHTML(s,h)}
    <div class="plan"><div><span>יש לך</span><b>${num(h.qty,4)}</b><span>שווי ${num(h.qty*s.price,0)} ${cur(s)}${r?` · ${L(Math.round(r.w*100)+'%')} מהתיק`:''}</span></div>
     <div><span>רווח / הפסד</span><b class="${cls(g)}">${g==null?'—':pct(g,1)}</b><span>${h.cost?`קנית ב-${num(h.cost)}`:'הזן מחיר קנייה כדי לראות'}</span></div>
     <div><span>✅ יעד רווח${pl.auto.target?' (אוטומטי)':''}</span><b class="pos">${num(pl.target)}</b><span>${pl.target?pct(pl.target/s.price-1,1)+' מהמחיר היום':'צריך מחיר קנייה'}</span></div>
@@ -445,7 +472,13 @@ function stockHTML(s){
    <div class="verdict vb-${v}"><div class="small" style="opacity:.85">ההמלצה של הכלי</div><div class="big">${VICON[v]} ${VERD[v]}</div><p>${esc(c.summary)}</p></div>
    <div class="acts"><button class="btn2 ${W[s.symbol]?'on':''}" onclick="toggleWatch('${esc(s.symbol)}')">${W[s.symbol]?'★ במעקב':'☆ לעקוב'}</button>
      <button class="btn2 ${CMP.includes(s.symbol)?'on':''}" onclick="toggleCmp('${esc(s.symbol)}')">${CMP.includes(s.symbol)?'✓ בהשוואה':'⇄ להשוות'}</button>
-     ${H[s.symbol]?'':`<button class="btn2" onclick="tab='mine';closePage();renderTabs();renderPanel();$('#hsym').value='${esc(s.symbol)}';$('#hqty').focus();$('#panel').scrollIntoView({behavior:'smooth'})">💼 יש לי</button>`}</div>
+     <button class="btn2" onclick="$('#buyf').hidden=!$('#buyf').hidden;if(!$('#buyf').hidden)$('#bqty').focus()">🛒 קניתי</button></div>
+   <form id="buyf" class="card" hidden style="margin:10px 0 0" onsubmit="boughtNow(event,'${esc(s.symbol)}')" autocomplete="off">
+     <h3 style="margin-top:0">${H[s.symbol]?'קנית עוד? הכלי יצרף ויחשב מחיר ממוצע':'קנית את המניה? מכאן הכלי עוקב אחריה בשבילך'}</h3>
+     <div class="hedit"><label>כמה יחידות קנית<input class="inp" id="bqty" type="number" inputmode="decimal" step="any" min="0" required></label>
+     <label>במחיר (${cur(s)})<input class="inp" id="bprice" type="number" inputmode="decimal" step="any" min="0" value="${s.price}" required></label></div>
+     <p class="muted tiny">המחיר ממולא לפי המחיר האחרון באתר. אם שילמת מחיר אחר, תקן אותו.</p>
+     <button class="btn" style="width:100%" type="submit">שמור את הקנייה</button></form>
    ${CMP.length>=2&&CMP.includes(s.symbol)?`<button class="btn more" onclick="openCompare()">השווה עכשיו: ${CMP.map(x=>esc(nm(byS(x)))).join(' מול ')}</button>`:CMP.length===1&&CMP.includes(s.symbol)?'<p class="muted tiny" style="margin:6px 0 0">עכשיו פתח מניה נוספת ולחץ "להשוות".</p>':''}
    ${W[s.symbol]?`<p class="small" style="margin:8px 0 0">התראה כשהמחיר יורד ל: <input type="number" inputmode="decimal" step="any" value="${W[s.symbol].target??''}" placeholder="מחיר" style="width:110px;font:inherit;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)" onchange="W['${esc(s.symbol)}'].target=this.value?+this.value:null;saveW()"></p>`:''}
    ${holdHTML(s)}
@@ -519,7 +552,7 @@ fetch('data.json?'+Date.now()).then(r=>{if(!r.ok)throw new Error(r.status);retur
   $('#updated').textContent=`עודכן ${dt.toLocaleString('he-IL',{weekday:'long',day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'})}`;
   if(d.synthetic)$('#warn').innerHTML+='<div class="warnbox">נתוני הדגמה אקראיים, לא נתוני אמת.</div>';
   if((Date.now()-dt)/864e5>4)$('#warn').innerHTML+='<div class="warnbox">הנתונים לא עודכנו כמה ימים. ייתכן שהעדכון האוטומטי נכשל.</div>';
-  renderMarket(); renderTabs(); renderPanel(); renderTrack(); renderTbar();
+  trackPeaks(); renderMarket(); renderTabs(); renderPanel(); renderTrack(); renderTbar();
   const h=decodeURIComponent(location.hash.slice(1)); if(h&&byS(h)) openStock(h);
 }).catch(e=>{$('#updated').textContent='לא הצלחתי לטעון את הנתונים. נסה לרענן.'});
 </script>
