@@ -146,7 +146,7 @@ def load_universe() -> list[dict]:
     return out
 
 
-def price_metrics(close: pd.Series, bench: pd.Series | None) -> dict:
+def price_metrics(close: pd.Series, bench: pd.Series | None, volume: pd.Series | None = None) -> dict:
     close = close.dropna()
     if len(close) < 130:
         return {}
@@ -179,8 +179,29 @@ def price_metrics(close: pd.Series, bench: pd.Series | None) -> dict:
     d = close.diff()
     up = d.clip(lower=0).ewm(alpha=1 / 14, adjust=False).mean()
     dn = (-d.clip(upper=0)).ewm(alpha=1 / 14, adjust=False).mean()
-    rsi = float(100 - 100 / (1 + up.iloc[-1] / dn.iloc[-1])) if dn.iloc[-1] > 0 else 100.0
+    rsi_s = (100 - 100 / (1 + up / dn.replace(0, np.nan))).fillna(100.0)
+    rsi = float(rsi_s.iloc[-1])
+    rsi_5ago = float(rsi_s.iloc[-6])
     ma20 = float(close.iloc[-20:].mean())
+    ma20_5ago = float(close.iloc[-25:-5].mean())
+    hi20 = float(close.iloc[-20:].max())
+    # relative strength: 3 months vs the market index
+    rs_3m = None
+    if bench is not None:
+        bb = bench.dropna()
+        if len(bb) > 64 and ret(63) is not None:
+            rs_3m = ret(63) - float(bb.iloc[-1] / bb.iloc[-64] - 1)
+    # volume: unusual activity and whether it comes on up days (buying) or down days (selling)
+    vol_ratio = updown_vol = None
+    if volume is not None:
+        v = volume.reindex(close.index).fillna(0)
+        v50 = float(v.iloc[-55:-5].mean())
+        if v50 > 0:
+            vol_ratio = float(v.iloc[-5:].mean()) / v50
+        rr20, vv20 = r.iloc[-20:], v.reindex(r.index).iloc[-20:]
+        dn_v = float(vv20[rr20 < 0].sum())
+        if dn_v > 0:
+            updown_vol = float(vv20[rr20 > 0].sum()) / dn_v
     dvol20 = float(r.iloc[-20:].std())
     spark = [round(float(v), 2) for v in close.iloc[-252::5]]
     return {"price": round(last, 2), "ret_1m": m1, "ret_3m": ret(63), "ret_6m": ret(126),
@@ -190,7 +211,10 @@ def price_metrics(close: pd.Series, bench: pd.Series | None) -> dict:
             "ma50_vs_200": (ma50 / ma200 - 1) if ma200 else None,
             "from_high": last / hi52 - 1, "rsi14": rsi, "ret_5d": ret(5), "ret_1d": ret(1),
             "ma20": round(ma20, 2), "dvol20": dvol20, "ma50": round(ma50, 2), "ma200": round(ma200, 2) if ma200 else None,
-            "low_3m": round(float(close.iloc[-63:].min()), 2), "spark": spark}
+            "low_3m": round(float(close.iloc[-63:].min()), 2), "spark": spark,
+            "rsi_5ago": rsi_5ago, "ma20_rising": ma20 > ma20_5ago,
+            "crossed_ma20": bool(last > ma20 and float(close.iloc[-6]) < ma20_5ago),
+            "from_hi20": last / hi20 - 1, "rs_3m": rs_3m, "vol_ratio": vol_ratio, "updown_vol": updown_vol}
 
 
 INFO_KEYS = ["shortName", "longName", "sector", "industry", "marketCap", "currency",
@@ -228,6 +252,7 @@ def fetch_all(universe, yf):
     hist = yf.download(syms + extra, period="3y", interval="1d", auto_adjust=True,
                        progress=False, group_by="column", threads=True)
     closes = hist["Close"]
+    volumes = hist["Volume"] if "Volume" in hist else None
     infos = {}
     for i, s in enumerate(syms):
         for attempt in range(3):
@@ -246,7 +271,7 @@ def fetch_all(universe, yf):
         if i % 10 == 9:
             print(f"  fundamentals {i + 1}/{len(syms)}")
         time.sleep(0.25)
-    return closes, infos
+    return closes, infos, volumes
 
 
 # --------------------------------------------------------------------------------------
@@ -455,7 +480,8 @@ def watch_alerts(watch: list[dict], stocks: list[dict], changes: list[dict]) -> 
 VERDICT_HE = {"buy": "לקנות עכשיו", "wait": "לחכות", "avoid": "לא לקנות"}
 
 
-def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: list[dict]) -> dict:
+def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: list[dict],
+          volumes: pd.DataFrame | None = None) -> dict:
     rows = []
     for u in universe:
         s = u["symbol"]
@@ -463,7 +489,8 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
             print(f"  no prices for {s}", file=sys.stderr)
             continue
         bench = closes.get(BENCH[u["market"]])
-        m = price_metrics(closes[s], bench)
+        vser = volumes[s] if volumes is not None and s in volumes else None
+        m = price_metrics(closes[s], bench, vser)
         if not m:
             continue
         f = infos.get(s, {})
@@ -498,6 +525,14 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
     lowrisk_rank = pct_rank(g(lambda r: r["m"]["vol"]), False)
 
     regime = market_regime(closes, market_news)
+    # sector rotation: which sectors are attracting money this month (average 1-month move per sector)
+    sec_of = lambda r: r["f"].get("sector") or r.get("group") or ""  # noqa: E731
+    by_sec: dict[str, list[float]] = {}
+    for r in rows:
+        if r["m"].get("ret_1m") is not None and sec_of(r):
+            by_sec.setdefault(sec_of(r), []).append(r["m"]["ret_1m"])
+    sec_avg = {k: float(np.median(v)) for k, v in by_sec.items() if len(v) >= 3}
+    sec_rank = pct_rank(sec_avg)
     stocks = []
     for r in rows:
         k = r["symbol"]
@@ -511,6 +546,8 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
         neg_titles = [n["title"] for n in r["news"] if n["sentiment"] < 0][:2]
         consultation = consult(r["m"], f, {**ectx, "upside": r["upside"], "news_score": r["news_raw"],
                                            "news_count": r["news_count"], "neg_headlines": neg_titles,
+                                           "sector_rank": (sec_rank.get(sec_of(r)) or 0) / 100 if sec_of(r) in sec_rank else None,
+                                           "sector_ret_1m": sec_avg.get(sec_of(r)),
                                            "risk_level": lvl, "market": regime})
         is_etf = (f.get("quoteType") or "").upper() in ("ETF", "MUTUALFUND")
         if is_etf:  # a fund is not a company: keep the wording right
@@ -554,7 +591,7 @@ def main():
     import yfinance as yf
 
     universe = load_universe()
-    closes, infos = fetch_all(universe, yf)
+    closes, infos, volumes = fetch_all(universe, yf)
     def news_for(u):
         nm = (infos.get(u["symbol"]) or {}).get("shortName") or u["symbol"].replace(".TA", "")
         nm = re.sub(r"\b(Inc|Corp|Corporation|Ltd|Limited|plc|Co|Holdings?|Group|Class [A-C])\b\.?,?", "", nm).strip(" ,.")
@@ -573,7 +610,7 @@ def main():
                 print(f"  news {i + 1}/{len(universe)}")
     market_news = fetch_news("stock market OR Wall Street OR Federal Reserve", days=5, limit=15)
     market_news += fetch_news("Tel Aviv Stock Exchange OR Bank of Israel", days=7, limit=6)
-    data = build(universe, closes, infos, news, market_news)
+    data = build(universe, closes, infos, news, market_news, volumes)
     if data["count"] < len(universe) * 0.5:
         sys.exit("Too few stocks processed, refusing to publish a half-empty dataset")
     write_split(data)
@@ -596,6 +633,7 @@ def write_split(data: dict) -> None:
         small.append({**{k: st.get(k) for k in SUMMARY_KEYS},
                       "risk": {"level": st["risk"]["level"]},
                       "consult": {"verdict": c["verdict"], "score": c["score"], "summary": c["summary"],
+                                  "opp": c.get("opp"), "entry": c.get("entry"), "signals": (c.get("signals") or [])[:2],
                                   "exit": c.get("exit") or {}},
                       "metrics": {k: st["metrics"].get(k) for k in ("ret_1d", "ret_5d", "ret_1m", "ret_3m", "ret_6m",
                                                                       "ret_1y", "above_ma200", "from_high")},
