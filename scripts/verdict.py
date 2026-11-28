@@ -91,6 +91,89 @@ def check_timing(m, f, ctx):
     return _chk("timing", "tech", "נקודת כניסה ניטרלית", OK, txt, 1.5)
 
 
+def check_entry(m, f, ctx):
+    """Is the price a good place to buy: a pullback to support inside an uptrend, not a chase."""
+    p, ma20, ma50, ma200 = m.get("price"), m.get("ma20"), m.get("ma50"), m.get("ma200")
+    rsi, fh20 = m.get("rsi14"), m.get("from_hi20")
+    if not p or not ma50 or rsi is None:
+        return _chk("entry", "tech", "מחיר כניסה", NA, "אין מספיק נתונים", 1.5)
+    up_long = (p > ma200 and ma50 > ma200) if ma200 else p > ma50
+    d50 = p / ma50 - 1
+    d20 = p / ma20 - 1 if ma20 else None
+    near50 = -0.03 <= d50 <= 0.04
+    near20 = d20 is not None and -0.02 <= d20 <= 0.03
+    txt = f"המחיר {_pct(d50)} מממוצע 50 יום"
+    if fh20 is not None:
+        txt += f", {_pct(fh20)} מהשיא של החודש האחרון"
+    if up_long and fh20 is not None and -0.15 <= fh20 <= -0.03 and (near50 or near20) and rsi <= 60:
+        line = "ממוצע 50 יום" if near50 else "ממוצע 20 יום"
+        return _chk("entry", "tech", "ירידה קטנה בתוך מגמה עולה, ליד קו תמיכה", GOOD,
+                    txt + f". המחיר ירד קצת ונח ליד {line}, שבמגמה עולה משמש לרוב רצפה", 1.5)
+    if up_long and near50 and rsi <= 55:
+        return _chk("entry", "tech", "ליד קו תמיכה במגמה עולה", GOOD, txt, 1.5)
+    if d50 > 0.15 or rsi >= 72:
+        return _chk("entry", "tech", "רחוקה מקו התמיכה", BAD,
+                    txt + f". מחיר כניסה טוב יותר: בערך {ma50:.2f} (ממוצע 50 יום)", 1.5)
+    if ma200 and p < ma200 * 0.97 and not m.get("ma20_rising"):
+        return _chk("entry", "tech", "אין קו תמיכה קרוב", BAD,
+                    txt + ". המחיר מתחת לממוצע 200 יום ועדיין יורד, אין רצפה ברורה", 1.5)
+    return _chk("entry", "tech", "מחיר כניסה רגיל", OK, txt, 1.5)
+
+
+def check_catalysts(m, f, ctx):
+    """Signs that a rise may be coming: expected ones (earnings with a beat record, analysts, momentum
+    turning up) and less predictable ones (unusual volume, accumulation, sector rotation, short squeeze)."""
+    pos, neg = [], []
+    p, ma50 = m.get("price"), m.get("ma50")
+    vr, ud, r5 = m.get("vol_ratio"), m.get("updown_vol"), m.get("ret_5d")
+    rsi, rsi0 = m.get("rsi14"), m.get("rsi_5ago")
+    if vr and vr >= 1.5 and (r5 or 0) > 0:
+        pos.append(f"נפח מסחר חריג (פי {vr:.1f} מהרגיל) בימים של עלייה: כנראה קונים גדולים נכנסים")
+    elif vr and vr >= 1.5 and (r5 or 0) < 0:
+        neg.append(f"נפח מסחר חריג (פי {vr:.1f} מהרגיל) בירידות: כנראה מוכרים גדולים יוצאים")
+    if ud and ud >= 1.4:
+        pos.append("בחודש האחרון נסחר הרבה יותר בימי עלייה מאשר בימי ירידה (איסוף מניות)")
+    elif ud and ud <= 0.7:
+        neg.append("בחודש האחרון נסחר הרבה יותר בימי ירידה (מוכרים יוצאים)")
+    if m.get("crossed_ma20") or (rsi0 is not None and rsi is not None and rsi0 < 45 <= rsi - 5):
+        pos.append("המומנטום מתחיל להתהפך למעלה (המחיר חזר מעל ממוצע 20 יום)")
+    rs = m.get("rs_3m")
+    if rs is not None and rs >= 0.05:
+        pos.append(f"חזקה מהשוק: {_pct(rs)} יותר מהמדד בשלושה חודשים")
+    elif rs is not None and rs <= -0.10:
+        neg.append(f"חלשה מהשוק: {_pct(rs)} מול המדד בשלושה חודשים")
+    if m.get("from_high") is not None and m["from_high"] > -0.02 and (vr or 0) >= 1.2:
+        pos.append("פורצת לשיא שנתי חדש עם נפח מסחר גבוה")
+    sr = ctx.get("sector_rank")
+    if sr is not None and sr >= 0.75:
+        pos.append("הסקטור שלה בין החזקים החודש: כסף זורם אליו")
+    elif sr is not None and sr <= 0.2:
+        neg.append("הסקטור שלה בין החלשים החודש")
+    d, hist = ctx.get("days_to_earnings"), ctx.get("surprises") or []
+    beats = sum(1 for x in hist if x > 0)
+    if d is not None and 8 <= d <= 35 and len(hist) >= 3 and beats >= len(hist) - 1:
+        pos.append(f"דוח רבעוני בעוד {d} ימים, והחברה עקפה את התחזיות ב-{beats} מתוך {len(hist)} הדוחות האחרונים")
+    up, rec = ctx.get("upside"), _f(f.get("recommendationMean"))
+    if up is not None and up >= 0.2 and rec is not None and rec <= 2.3:
+        pos.append(f"האנליסטים צופים {_pct(up)} עד מחיר היעד הממוצע")
+    short = _f(f.get("shortPercentOfFloat"))
+    if short and short >= 0.08 and p and ma50 and p > ma50:
+        pos.append(f"{short * 100:.0f}% מהמניות מושאלות בשורט. אם המחיר ממשיך לעלות, הם ייאלצו לקנות, וזה יכול להקפיץ אותו")
+    if (ctx.get("news_score") or 0) > 0.2 and ctx.get("news_count", 0) >= 3:
+        pos.append("החדשות האחרונות חיוביות")
+    net = len(pos) - len(neg)
+    if len(pos) >= 3 and net >= 2:
+        st, title = GOOD, "יש כמה סימנים לעלייה קרובה"
+    elif (len(neg) >= 2 and net < 0) or (not pos and neg):
+        st, title = BAD, "יש סימנים של מכירה"
+    else:
+        st, title = OK, "מעט סימנים מיוחדים" if pos or neg else "אין סימנים מיוחדים"
+    txt = "; ".join(pos + neg) or "אין כרגע נפח חריג, שינוי מומנטום, או אירוע קרוב"
+    c = _chk("catalyst", "event", title, st, txt, 1.2)
+    c["signals"], c["neg_signals"] = pos, neg
+    return c
+
+
 def check_earnings_date(m, f, ctx):
     d = ctx.get("days_to_earnings")
     if d is None:
@@ -277,7 +360,7 @@ def check_market(m, f, ctx):
     return _chk("market", "risk", "השוק הכללי מעורב", OK, notes, 0)
 
 
-CHECKS = [check_trend, check_timing, check_earnings_date, check_last_earnings, check_valuation,
+CHECKS = [check_trend, check_timing, check_entry, check_catalysts, check_earnings_date, check_last_earnings, check_valuation,
           check_profitability, check_balance, check_growth, check_analysts, check_news, check_risk, check_market]
 
 GROUPS = {"tech": "מגמה ותזמון", "fund": "העסק עצמו", "sent": "אנליסטים וחדשות", "event": "אירועים קרובים",
@@ -319,7 +402,8 @@ def _r(c):
     return {"status": c["status"], "title": c["title"], "text": c["text"], "plain": c.get("plain"), "key": c["key"]}
 
 
-SIMPLE_NAME = {"trend": "כיוון המחיר", "timing": "האם זה זמן טוב להיכנס", "earn_date": "דוח רווחים קרוב",
+SIMPLE_NAME = {"trend": "כיוון המחיר", "timing": "האם זה זמן טוב להיכנס", "entry": "האם המחיר טוב לקנייה",
+               "catalyst": "סימנים לעלייה קרובה", "earn_date": "דוח רווחים קרוב",
                "earn_last": "הדוח האחרון", "value": "האם המחיר הוגן", "quality": "האם החברה מרוויחה",
                "balance": "חובות ומזומן", "growth": "האם החברה גדלה", "analysts": "מה חושבים המומחים",
                "news": "מה כותבים בחדשות", "risk": "כמה המניה קופצת", "market": "מצב הבורסה כולה"}
@@ -344,6 +428,21 @@ def plain(c, m, f, ctx) -> str:
         if t.startswith("מתוחה"):
             return "המניה עלתה מהר מאוד לאחרונה. אחרי קפיצה כזו היא לרוב יורדת קצת"
         return f"המניה צונחת עכשיו ({pc(m.get('ret_1m'))} בחודש). קשה לדעת איפה היא תעצור"
+    if k == "entry":
+        if st == GOOD:
+            return "המחיר ירד קצת בתוך מגמה עולה ונח ליד קו תמיכה. זה בדרך כלל מחיר טוב יותר מלקנות בשיא"
+        if st == OK:
+            return "המחיר לא במבצע וגם לא יקר במיוחד ביחס לממוצעים"
+        if t.startswith("רחוקה"):
+            return f"המחיר עלה הרבה מעל הממוצע. עדיף לחכות לירידה לבערך {m['ma50']:.2f}"
+        return "המחיר יורד ואין רצפה ברורה שבה הוא עוצר"
+    if k == "catalyst":
+        sig, ng = c.get("signals") or [], c.get("neg_signals") or []
+        if st == GOOD:
+            return f"נמצאו {len(sig)} סימנים שמקדימים לעיתים קרובות עלייה: " + sig[0]
+        if st == BAD:
+            return ng[0] if ng else "יש סימנים שמוכרים גדולים יוצאים מהמניה"
+        return sig[0] if sig else "אין כרגע סימן מיוחד לעלייה קרובה"
     if k == "earn_date":
         d = ctx.get("days_to_earnings")
         return {GOOD: "אין דוח רווחים בשבועות הקרובים",
@@ -402,6 +501,8 @@ def consult(m: dict, f: dict, ctx: dict) -> dict:
     earn_soon = by["earn_date"]["status"] == BAD
     market_bad = by["market"]["status"] == BAD
     risk_lvl = ctx.get("risk_level") or 3
+    entry = by["entry"]["status"]
+    cat = by["catalyst"]
     reds = [c for c in checks if c["status"] == BAD]
     greens = [c for c in checks if c["status"] == GOOD]
     possible = sum(c["weight"] for c in checks if c["weight"] > 0)
@@ -431,10 +532,25 @@ def consult(m: dict, f: dict, ctx: dict) -> dict:
     elif fund >= 0.0 and trend == GOOD and overall >= 0.25 and not earn_soon and timing != BAD \
             and not (market_bad and risk_lvl >= 4):
         verdict = "buy"
+    elif fund >= 0.0 and trend != BAD and entry == GOOD and cat["status"] == GOOD and overall >= 0.15 \
+            and not earn_soon and timing != BAD and not (market_bad and risk_lvl >= 4):
+        verdict = "buy"  # good price inside an uptrend, with signs of a coming rise
     elif fund >= -0.1 and overall >= -0.05:
         verdict = "wait"
     else:
         verdict = "avoid"
+
+    if verdict == "buy" and cat["status"] == BAD:
+        verdict = "wait"
+        waits.append("יש סימנים שמוכרים גדולים יוצאים (" + (cat["neg_signals"] or ["חולשה"])[0] + "). לחכות שזה יתהפך")
+    if verdict == "buy" and entry == BAD and by["entry"]["title"].startswith("רחוקה"):
+        verdict = "wait"
+        waits.append(f"המחיר רחוק מקו התמיכה. מחיר כניסה טוב יותר: בערך {m['ma50']:.2f}, או לקנות בחלקים")
+
+    # how attractive is buying right now: business + trend, plus entry price and early signs of a rise
+    opp = 50 + 25 * overall + {GOOD: 12, OK: 0, BAD: -12, NA: 0}[entry] \
+        + min(4 * len(cat["signals"]), 16) - min(5 * len(cat["neg_signals"]), 15)
+    opp = int(max(0, min(100, round(opp))))
 
     confidence = "גבוהה" if coverage > 0.8 and abs(overall) > 0.35 else "בינונית" if coverage > 0.55 else "נמוכה"
 
@@ -444,6 +560,10 @@ def consult(m: dict, f: dict, ctx: dict) -> dict:
 
     if verdict == "buy":
         summary = "חברה במצב טוב, והמחיר בעלייה. אין כרגע סיבה מיוחדת לחכות."
+        if entry == GOOD:
+            summary = "חברה במצב טוב, והמחיר ירד קצת לקו תמיכה בתוך מגמה עולה. זה מחיר כניסה טוב."
+        if cat["status"] == GOOD:
+            summary += " יש גם סימנים לעלייה קרובה."
         reasons = [_r(c) for c in top(greens, 4)]
         cautions = [c["title"] for c in reds]
     elif verdict == "wait":
@@ -461,7 +581,8 @@ def consult(m: dict, f: dict, ctx: dict) -> dict:
     ex = exit_plan(m, f, ctx.get("upside")) if verdict != "avoid" else {}
     return {"verdict": verdict, "summary": summary, "exit": ex, "reasons": reasons, "cautions": cautions,
             "waits": waits if verdict != "avoid" else [w for w in waits if "200" in w][:1],
-            "score": round(overall * 100), "fund_score": round(fund * 100),
+            "score": round(overall * 100), "fund_score": round(fund * 100), "opp": opp,
+            "entry": entry, "signals": cat["signals"][:5], "neg_signals": cat["neg_signals"][:3],
             "confidence": confidence, "checks": checks,
             "counts": {"good": len(greens), "bad": len(reds),
                        "ok": sum(1 for c in checks if c["status"] == OK)}}

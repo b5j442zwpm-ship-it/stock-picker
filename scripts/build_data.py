@@ -119,25 +119,34 @@ def news_score(items: list[dict]) -> float | None:
 
 # --------------------------------------------------------------------------------------
 def load_universe() -> list[dict]:
+    """tickers.txt: `SYMBOL | Hebrew name` lines, grouped under `# --- group name` headers."""
     out = []
-    for line in TICKERS_FILE.read_text(encoding="utf-8").splitlines():
-        line = line.split("#", 1)[0].strip()
+    group = ""
+    seen = set()
+    for raw in TICKERS_FILE.read_text(encoding="utf-8").splitlines():
+        if raw.strip().startswith("# ---"):
+            group = raw.strip()[5:].strip()
+            continue
+        line = raw.split("#", 1)[0].strip()
         if not line:
             continue
         parts = [p.strip() for p in line.split("|")]
-        sym = parts[0]
-        out.append({"symbol": sym, "name_he": parts[1] if len(parts) > 1 else "",
+        sym = parts[0].upper()
+        if sym in seen:
+            continue
+        seen.add(sym)
+        out.append({"symbol": sym, "name_he": parts[1] if len(parts) > 1 else "", "group": group,
                     "market": "TA" if sym.endswith(".TA") else "US"})
     # stocks on the watchlist are always analysed, even if they are not in tickers.txt
     have = {u["symbol"] for u in out}
     for w in load_watchlist():
         if w["symbol"] not in have:
             have.add(w["symbol"])
-            out.append({"symbol": w["symbol"], "name_he": "", "market": "TA" if w["symbol"].endswith(".TA") else "US"})
+            out.append({"symbol": w["symbol"], "name_he": "", "group": "", "market": "TA" if w["symbol"].endswith(".TA") else "US"})
     return out
 
 
-def price_metrics(close: pd.Series, bench: pd.Series | None) -> dict:
+def price_metrics(close: pd.Series, bench: pd.Series | None, volume: pd.Series | None = None) -> dict:
     close = close.dropna()
     if len(close) < 130:
         return {}
@@ -170,8 +179,29 @@ def price_metrics(close: pd.Series, bench: pd.Series | None) -> dict:
     d = close.diff()
     up = d.clip(lower=0).ewm(alpha=1 / 14, adjust=False).mean()
     dn = (-d.clip(upper=0)).ewm(alpha=1 / 14, adjust=False).mean()
-    rsi = float(100 - 100 / (1 + up.iloc[-1] / dn.iloc[-1])) if dn.iloc[-1] > 0 else 100.0
+    rsi_s = (100 - 100 / (1 + up / dn.replace(0, np.nan))).fillna(100.0)
+    rsi = float(rsi_s.iloc[-1])
+    rsi_5ago = float(rsi_s.iloc[-6])
     ma20 = float(close.iloc[-20:].mean())
+    ma20_5ago = float(close.iloc[-25:-5].mean())
+    hi20 = float(close.iloc[-20:].max())
+    # relative strength: 3 months vs the market index
+    rs_3m = None
+    if bench is not None:
+        bb = bench.dropna()
+        if len(bb) > 64 and ret(63) is not None:
+            rs_3m = ret(63) - float(bb.iloc[-1] / bb.iloc[-64] - 1)
+    # volume: unusual activity and whether it comes on up days (buying) or down days (selling)
+    vol_ratio = updown_vol = None
+    if volume is not None:
+        v = volume.reindex(close.index).fillna(0)
+        v50 = float(v.iloc[-55:-5].mean())
+        if v50 > 0:
+            vol_ratio = float(v.iloc[-5:].mean()) / v50
+        rr20, vv20 = r.iloc[-20:], v.reindex(r.index).iloc[-20:]
+        dn_v = float(vv20[rr20 < 0].sum())
+        if dn_v > 0:
+            updown_vol = float(vv20[rr20 > 0].sum()) / dn_v
     dvol20 = float(r.iloc[-20:].std())
     spark = [round(float(v), 2) for v in close.iloc[-252::5]]
     return {"price": round(last, 2), "ret_1m": m1, "ret_3m": ret(63), "ret_6m": ret(126),
@@ -181,7 +211,10 @@ def price_metrics(close: pd.Series, bench: pd.Series | None) -> dict:
             "ma50_vs_200": (ma50 / ma200 - 1) if ma200 else None,
             "from_high": last / hi52 - 1, "rsi14": rsi, "ret_5d": ret(5), "ret_1d": ret(1),
             "ma20": round(ma20, 2), "dvol20": dvol20, "ma50": round(ma50, 2), "ma200": round(ma200, 2) if ma200 else None,
-            "low_3m": round(float(close.iloc[-63:].min()), 2), "spark": spark}
+            "low_3m": round(float(close.iloc[-63:].min()), 2), "spark": spark,
+            "rsi_5ago": rsi_5ago, "ma20_rising": ma20 > ma20_5ago,
+            "crossed_ma20": bool(last > ma20 and float(close.iloc[-6]) < ma20_5ago),
+            "from_hi20": last / hi20 - 1, "rs_3m": rs_3m, "vol_ratio": vol_ratio, "updown_vol": updown_vol}
 
 
 INFO_KEYS = ["shortName", "longName", "sector", "industry", "marketCap", "currency",
@@ -191,7 +224,7 @@ INFO_KEYS = ["shortName", "longName", "sector", "industry", "marketCap", "curren
              "freeCashflow", "dividendYield", "targetMeanPrice", "recommendationMean",
              "numberOfAnalystOpinions", "currentPrice", "grossMargins", "totalCash", "totalDebt",
              "operatingCashflow", "recommendationKey", "earningsTimestamp", "earningsTimestampStart",
-             "shortPercentOfFloat", "longBusinessSummary"]
+             "shortPercentOfFloat", "longBusinessSummary", "quoteType", "totalAssets"]
 
 
 def fetch_earnings(t) -> list[dict]:
@@ -214,11 +247,12 @@ def fetch_earnings(t) -> list[dict]:
 
 def fetch_all(universe, yf):
     syms = [u["symbol"] for u in universe]
-    extra = sorted(set(BENCH.values()) | set(MACRO.values()))
+    extra = sorted((set(BENCH.values()) | set(MACRO.values())) - set(syms))
     print(f"Downloading prices for {len(syms) + len(extra)} symbols...")
     hist = yf.download(syms + extra, period="3y", interval="1d", auto_adjust=True,
                        progress=False, group_by="column", threads=True)
     closes = hist["Close"]
+    volumes = hist["Volume"] if "Volume" in hist else None
     infos = {}
     for i, s in enumerate(syms):
         for attempt in range(3):
@@ -226,7 +260,8 @@ def fetch_all(universe, yf):
                 t = yf.Ticker(s)
                 info = t.info or {}
                 infos[s] = {k: info.get(k) for k in INFO_KEYS}
-                infos[s]["_earnings"] = fetch_earnings(t) if not s.endswith(".TA") else []
+                is_fund = (info.get("quoteType") or "").upper() in ("ETF", "MUTUALFUND")
+                infos[s]["_earnings"] = fetch_earnings(t) if not (s.endswith(".TA") or is_fund) else []
                 break
             except Exception as e:  # noqa: BLE001
                 print(f"  info {s} attempt {attempt + 1}: {e}", file=sys.stderr)
@@ -235,8 +270,8 @@ def fetch_all(universe, yf):
             infos[s] = {}
         if i % 10 == 9:
             print(f"  fundamentals {i + 1}/{len(syms)}")
-        time.sleep(0.4)
-    return closes, infos
+        time.sleep(0.25)
+    return closes, infos, volumes
 
 
 # --------------------------------------------------------------------------------------
@@ -361,6 +396,7 @@ def market_regime(closes: pd.DataFrame, market_news: list[dict]) -> dict:
             return None
         return {"last": round(float(s.iloc[-1]), 2), "ma200": round(float(s.iloc[-200:].mean()), 2),
                 "above_ma200": bool(s.iloc[-1] > s.iloc[-200:].mean()),
+                "ret_1d": float(s.iloc[-1] / s.iloc[-2] - 1),
                 "ret_1m": float(s.iloc[-1] / s.iloc[-22] - 1), "ret_3m": float(s.iloc[-1] / s.iloc[-64] - 1),
                 "dd": float(s.iloc[-1] / s.iloc[-252:].max() - 1)}
 
@@ -444,7 +480,8 @@ def watch_alerts(watch: list[dict], stocks: list[dict], changes: list[dict]) -> 
 VERDICT_HE = {"buy": "לקנות עכשיו", "wait": "לחכות", "avoid": "לא לקנות"}
 
 
-def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: list[dict]) -> dict:
+def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: list[dict],
+          volumes: pd.DataFrame | None = None) -> dict:
     rows = []
     for u in universe:
         s = u["symbol"]
@@ -452,7 +489,8 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
             print(f"  no prices for {s}", file=sys.stderr)
             continue
         bench = closes.get(BENCH[u["market"]])
-        m = price_metrics(closes[s], bench)
+        vser = volumes[s] if volumes is not None and s in volumes else None
+        m = price_metrics(closes[s], bench, vser)
         if not m:
             continue
         f = infos.get(s, {})
@@ -487,6 +525,14 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
     lowrisk_rank = pct_rank(g(lambda r: r["m"]["vol"]), False)
 
     regime = market_regime(closes, market_news)
+    # sector rotation: which sectors are attracting money this month (average 1-month move per sector)
+    sec_of = lambda r: r["f"].get("sector") or r.get("group") or ""  # noqa: E731
+    by_sec: dict[str, list[float]] = {}
+    for r in rows:
+        if r["m"].get("ret_1m") is not None and sec_of(r):
+            by_sec.setdefault(sec_of(r), []).append(r["m"]["ret_1m"])
+    sec_avg = {k: float(np.median(v)) for k, v in by_sec.items() if len(v) >= 3}
+    sec_rank = pct_rank(sec_avg)
     stocks = []
     for r in rows:
         k = r["symbol"]
@@ -500,9 +546,15 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
         neg_titles = [n["title"] for n in r["news"] if n["sentiment"] < 0][:2]
         consultation = consult(r["m"], f, {**ectx, "upside": r["upside"], "news_score": r["news_raw"],
                                            "news_count": r["news_count"], "neg_headlines": neg_titles,
+                                           "sector_rank": (sec_rank.get(sec_of(r)) or 0) / 100 if sec_of(r) in sec_rank else None,
+                                           "sector_ret_1m": sec_avg.get(sec_of(r)),
                                            "risk_level": lvl, "market": regime})
+        is_etf = (f.get("quoteType") or "").upper() in ("ETF", "MUTUALFUND")
+        if is_etf:  # a fund is not a company: keep the wording right
+            consultation["summary"] = consultation["summary"].replace("חברה טובה", "קרן טובה").replace("חברה במצב טוב", "קרן במצב טוב")
         stocks.append({
-            "symbol": k, "market": r["market"],
+            "symbol": k, "market": r["market"], "group": r.get("group", ""),
+            "type": "etf" if is_etf else "stock",
             "name": f.get("shortName") or f.get("longName") or k, "name_he": r["name_he"],
             "sector": f.get("sector") or "", "industry": f.get("industry") or "",
             "currency": f.get("currency") or ("ILA" if r["market"] == "TA" else "USD"),
@@ -527,7 +579,8 @@ def build(universe, closes: pd.DataFrame, infos: dict, news: dict, market_news: 
     changes = history.update(hist, stocks, today)
     HIST.write_text(json.dumps(hist, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     track = {"live": history.evaluate_live(hist, closes, bench_of),
-             "sim": history.simulate(closes, [s["symbol"] for s in stocks], bench_of, price_metrics, exit_plan)}
+             "sim": history.simulate(closes, [s["symbol"] for s in stocks if s["type"] == "stock"], bench_of,
+                                     price_metrics, exit_plan, step=10 if len(stocks) <= 150 else 20)}
     watch = watch_alerts(load_watchlist(), stocks, changes)
     return {"generated_at": datetime.now(timezone.utc).isoformat(timespec="minutes"),
             "changes": changes, "track": track, "watchlist": watch,
@@ -538,26 +591,34 @@ def main():
     import yfinance as yf
 
     universe = load_universe()
-    closes, infos = fetch_all(universe, yf)
-    news = {}
-    for i, u in enumerate(universe):
+    closes, infos, volumes = fetch_all(universe, yf)
+    def news_for(u):
         nm = (infos.get(u["symbol"]) or {}).get("shortName") or u["symbol"].replace(".TA", "")
         nm = re.sub(r"\b(Inc|Corp|Corporation|Ltd|Limited|plc|Co|Holdings?|Group|Class [A-C])\b\.?,?", "", nm).strip(" ,.")
         q = f'"{nm}" stock' if u["market"] == "US" else f'"{nm}" Israel'
-        news[u["symbol"]] = fetch_news(q)
-        time.sleep(0.5)
-        if i % 10 == 9:
-            print(f"  news {i + 1}/{len(universe)}")
+        items = fetch_news(q)
+        time.sleep(0.3)
+        return u["symbol"], items
+
+    # a few parallel requests keep the run short now that the list has hundreds of stocks
+    from concurrent.futures import ThreadPoolExecutor
+    news = {}
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for i, (sym, items) in enumerate(pool.map(news_for, universe)):
+            news[sym] = items
+            if i % 50 == 49:
+                print(f"  news {i + 1}/{len(universe)}")
     market_news = fetch_news("stock market OR Wall Street OR Federal Reserve", days=5, limit=15)
     market_news += fetch_news("Tel Aviv Stock Exchange OR Bank of Israel", days=7, limit=6)
-    data = build(universe, closes, infos, news, market_news)
+    data = build(universe, closes, infos, news, market_news, volumes)
     if data["count"] < len(universe) * 0.5:
         sys.exit("Too few stocks processed, refusing to publish a half-empty dataset")
     write_split(data)
     print(f"Wrote {OUT} with {data['count']} stocks")
 
 
-SUMMARY_KEYS = ["symbol", "market", "name", "name_he", "sector", "currency", "price", "upside"]
+SUMMARY_KEYS = ["symbol", "market", "group", "type", "name", "name_he", "sector", "currency", "price", "upside",
+                "market_cap"]
 
 
 def write_split(data: dict) -> None:
@@ -572,9 +633,11 @@ def write_split(data: dict) -> None:
         small.append({**{k: st.get(k) for k in SUMMARY_KEYS},
                       "risk": {"level": st["risk"]["level"]},
                       "consult": {"verdict": c["verdict"], "score": c["score"], "summary": c["summary"],
+                                  "opp": c.get("opp"), "entry": c.get("entry"), "signals": (c.get("signals") or [])[:2],
                                   "exit": c.get("exit") or {}},
-                      "metrics": {k: st["metrics"].get(k) for k in ("ret_1m", "ret_6m", "ret_1y")},
-                      "spark": st["spark"][::2]})
+                      "metrics": {k: st["metrics"].get(k) for k in ("ret_1d", "ret_5d", "ret_1m", "ret_3m", "ret_6m",
+                                                                      "ret_1y", "above_ma200", "from_high")},
+                      "spark": st["spark"][::3]})
         fn = st["symbol"] + ".json"
         keep.add(fn)
         (sdir / fn).write_text(json.dumps(st, ensure_ascii=False, separators=(",", ":"), default=str), encoding="utf-8")

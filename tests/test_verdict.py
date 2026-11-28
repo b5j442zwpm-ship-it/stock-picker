@@ -39,3 +39,28 @@ def test_wait_good_business_in_downtrend():
 
 def test_avoid():
     assert consult(DOWN, BADF, {**CTX, "risk_level": 5, "upside": -0.1})["verdict"] == "avoid"
+
+
+# pullback to the 50-day line inside an uptrend, with buying volume and a turn up
+DIP = {**UP, "price": 105, "ma20": 106, "ma50": 104, "rsi14": 50, "rsi_5ago": 40, "ret_1m": -0.03, "ret_5d": 0.02,
+       "from_hi20": -0.07, "vol_ratio": 1.7, "updown_vol": 1.6, "rs_3m": 0.08, "crossed_ma20": False}
+
+
+def test_pullback_is_a_good_entry_with_signals():
+    c = consult(DIP, GOODF, CTX)
+    by = {k["key"]: k for k in c["checks"]}
+    assert by["entry"]["status"] == "good"
+    assert by["catalyst"]["status"] == "good" and len(c["signals"]) >= 3
+    assert c["verdict"] == "buy" and "מחיר כניסה טוב" in c["summary"]
+    assert c["opp"] > consult(UP, GOODF, CTX)["opp"]
+
+
+def test_selling_pressure_blocks_buy():
+    dist = {**UP, "ret_5d": -0.03, "vol_ratio": 2.0, "updown_vol": 0.5, "rs_3m": -0.15}
+    c = consult(dist, GOODF, {**CTX, "sector_rank": 0.1})
+    assert c["verdict"] == "wait" and any("מוכרים" in w for w in c["waits"])
+
+
+def test_chasing_far_above_support_waits():
+    far = {**UP, "price": 121, "ma50": 104, "rsi14": 66}
+    assert consult(far, GOODF, CTX)["verdict"] == "wait"
